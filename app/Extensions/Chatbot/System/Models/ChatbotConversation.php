@@ -74,6 +74,11 @@ class ChatbotConversation extends Model
             ->orderByDesc('id');
     }
 
+    public function enquiry(): HasOne
+    {
+        return $this->hasOne(ChatbotEnquiry::class, 'conversation_id');
+    }
+
     public function histories(): HasMany
     {
         return $this->hasMany(ChatbotHistory::class, 'conversation_id');

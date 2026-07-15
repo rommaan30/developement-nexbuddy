@@ -12,6 +12,7 @@ use App\Extensions\Chatbot\System\Http\Controllers\ChatbotAnalyticsController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotCannedResponseController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotCustomerController;
+use App\Extensions\Chatbot\System\Http\Controllers\ChatbotEnquiryController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotKnowledgeBaseArticleController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotMultiChannelController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotTrainController;
@@ -178,6 +179,7 @@ class ChatbotServiceProvider extends ServiceProvider implements ExtensionRegiste
                     $router->resource('knowledge-base-article', ChatbotKnowledgeBaseArticleController::class);
                     $router->resource('canned-response', ChatbotCannedResponseController::class);
                     $router->resource('chatbot-customer', ChatbotCustomerController::class);
+                    $router->get('enquiries', [ChatbotEnquiryController::class, 'index'])->name('enquiries.index');
                 });
                 $route
                     ->controller(ChatbotAnalyticsController::class)

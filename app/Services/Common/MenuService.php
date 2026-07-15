@@ -352,6 +352,23 @@ class MenuService
                 ],
                 'show_condition' => Route::has('dashboard.chatbot.chatbot-customer.index'),
             ],
+            'ext_chatbot_enquiries' => [
+                'parent_key'       => null,
+                'key'              => 'ext_chatbot_enquiries',
+                'route'            => 'dashboard.chatbot.enquiries.index',
+                'label'            => 'AI Bot Enquiries',
+                'icon'             => 'tabler-clipboard-list',
+                'svg'              => null,
+                'order'            => 5,
+                'is_active'        => true,
+                'params'           => [],
+                'type'             => 'item',
+                'extension'        => true,
+                'active_condition' => [
+                    'dashboard.chatbot.enquiries.*',
+                ],
+                'show_condition' => Route::has('dashboard.chatbot.enquiries.index'),
+            ],
             'ext_voice_chatbot' => [
                 'parent_key'       => null,
                 'key'              => 'ext_voice_chatbot',

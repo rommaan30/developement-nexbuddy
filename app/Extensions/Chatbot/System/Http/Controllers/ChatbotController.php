@@ -7,6 +7,7 @@ use App\Extensions\Chatbot\System\Http\Requests\ChatbotStoreRequest;
 use App\Extensions\Chatbot\System\Http\Resources\Admin\ChatbotConversationResource;
 use App\Extensions\Chatbot\System\Http\Resources\Admin\ChatbotResource;
 use App\Extensions\Chatbot\System\Models\Chatbot;
+use App\Extensions\Chatbot\System\Models\ChatbotEnquiry;
 use App\Extensions\Chatbot\System\Services\ChatbotService;
 use App\Helpers\Classes\Helper;
 use App\Http\Controllers\Controller;
@@ -31,6 +32,9 @@ class ChatbotController extends Controller
         $unreadAgentMessagesCount = $this->service->unreadAgentMessagesCount($externalChatbots);
         $unreadAiBotMessagesCount = $this->service->unreadAiBotMessagesCount($externalChatbots);
         $allMessagesCount = $this->service->allMessagesCount($externalChatbots);
+        $totalEnquiriesCount = ChatbotEnquiry::query()
+            ->whereIn('chatbot_id', $externalChatbots)
+            ->count();
 
         return view('chatbot::index', [
             'chatbots' => $this->service->query()
@@ -42,6 +46,7 @@ class ChatbotController extends Controller
             'unreadAgentMessagesCount' => $unreadAgentMessagesCount,
             'unreadAiBotMessagesCount' => $unreadAiBotMessagesCount,
             'allMessagesCount'         => $allMessagesCount,
+            'totalEnquiriesCount'      => $totalEnquiriesCount,
         ]);
     }
 
