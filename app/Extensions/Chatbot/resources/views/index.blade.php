@@ -61,6 +61,8 @@
         >
             @include('chatbot::home.actions-grid')
 
+            @include('chatbot::home.enquiry-analytics')
+
             @include('chatbot::home.chatbots-list', ['chatbots' => $chatbots])
 
             @include('chatbot::home.edit-window.edit-window', ['avatars' => $avatars])

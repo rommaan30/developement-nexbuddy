@@ -103,6 +103,7 @@ class MenuService
                     $query->where('is_active', true);
                 })
                 ->orderBy('order', 'asc')
+                ->orderBy('id', 'asc')
                 ->get();
 
             return $this->merge($items);

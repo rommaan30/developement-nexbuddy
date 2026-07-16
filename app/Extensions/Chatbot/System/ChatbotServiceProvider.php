@@ -180,6 +180,7 @@ class ChatbotServiceProvider extends ServiceProvider implements ExtensionRegiste
                     $router->resource('canned-response', ChatbotCannedResponseController::class);
                     $router->resource('chatbot-customer', ChatbotCustomerController::class);
                     $router->get('enquiries', [ChatbotEnquiryController::class, 'index'])->name('enquiries.index');
+                    $router->patch('enquiries/{chatbotEnquiry}', [ChatbotEnquiryController::class, 'update'])->name('enquiries.update');
                 });
                 $route
                     ->controller(ChatbotAnalyticsController::class)

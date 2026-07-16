@@ -198,6 +198,7 @@
                     userConversationHistory: [],
                     showExportOptions: false,
                     datepicker: null,
+                    targetConversationId: null,
                     hasCustomerTags: @json($hasCustomerTagExtension),
                     customerTagModal: {
                         show: false,
@@ -216,10 +217,17 @@
                         this.setActiveChat = this.setActiveChat.bind(this);
 
                         this.originalLoadMoreHref = this.$refs.loadMore.href;
+                        this.targetConversationId = new URLSearchParams(window.location.search).get('conversation_id');
 
                         await this.fetchChats({
                             loadMore: true
                         });
+
+                        if (this.targetConversationId) {
+                            this.activeChat = this.chatsList.find(chat => String(chat.id) === String(this.targetConversationId)) || this.activeChat;
+                            this.targetConversationId = null;
+                            this.setOpen(true);
+                        }
 
                         this.setupLoadMoreIO();
 
@@ -286,6 +294,10 @@
 
                         let url =
                             `${this.$refs.loadMore.href}&agentFilter=${this.filters.agent}&chatbot_channel=${this.filters.channel}&chatbot_id=${this.filters.chatbot}&status=${this.filters.status}&unread=${this.filters.unreadsOnly}&sort=${this.filters.sort}`;
+
+                        if (this.targetConversationId) {
+                            url += `&conversation_id=${this.targetConversationId}`;
+                        }
 
                         if (this.filters.dateRange.start && this.filters.dateRange.end) {
                             const formatLocalDate = (d) => {
@@ -576,6 +588,66 @@
                             diff < 3600 ? Math.floor(diff / 60) + '{{ __('m') }}' :
                             diff < 86400 ? Math.floor(diff / 3600) + '{{ __('h') }}' :
                             Math.floor(diff / 86400) + '{{ __('d') }}'
+                    },
+
+                    getEnquiryStatusLabel(status) {
+                        const labels = {
+                            new: '{{ __('New') }}',
+                            contacted: '{{ __('Contacted') }}',
+                            qualified: '{{ __('Qualified') }}',
+                            closed: '{{ __('Closed') }}',
+                        };
+
+                        return labels[String(status || 'new').toLowerCase()] || status || '---';
+                    },
+
+                    getEnquiryStatusBadgeClass(status) {
+                        const classes = {
+                            new: 'lqd-badge-primary bg-primary text-primary-foreground hover:bg-primary hover:text-white hover:shadow-primary/20',
+                            contacted: 'lqd-badge-success bg-teal-100 text-black hover:bg-teal-300 hover:shadow-teal-200/10',
+                            qualified: 'lqd-badge-success bg-emerald-500/10 text-emerald-500 hover:bg-emerald-400 hover:text-white hover:shadow-emerald-400/20',
+                            closed: 'lqd-badge-secondary bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground hover:shadow-secondary/20',
+                        };
+
+                        return classes[String(status || 'new').toLowerCase()] || 'lqd-badge-default bg-foreground/10 text-heading-foreground';
+                    },
+
+                    getEnquiryLeadScore(score) {
+                        const normalizedScore = Number.parseInt(score ?? 0, 10);
+
+                        if (Number.isNaN(normalizedScore)) {
+                            return 0;
+                        }
+
+                        return Math.max(0, Math.min(100, normalizedScore));
+                    },
+
+                    getEnquiryLeadScoreBadgeClass(score) {
+                        const normalizedScore = this.getEnquiryLeadScore(score);
+
+                        if (normalizedScore >= 80) {
+                            return 'lqd-badge-success bg-emerald-500/10 text-emerald-500 hover:bg-emerald-400 hover:text-white hover:shadow-emerald-400/20';
+                        }
+
+                        if (normalizedScore >= 50) {
+                            return 'lqd-badge-warning bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white hover:shadow-orange-500/20';
+                        }
+
+                        return 'lqd-badge-default bg-foreground/10 text-heading-foreground';
+                    },
+
+                    formatEnquiryDate(time) {
+                        if (!time) {
+                            return '---';
+                        }
+
+                        const date = new Date(time);
+
+                        if (Number.isNaN(date.getTime())) {
+                            return '---';
+                        }
+
+                        return date.toLocaleString();
                     },
 
                     // Date Range

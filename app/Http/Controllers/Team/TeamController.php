@@ -16,7 +16,7 @@ class TeamController extends Controller
 {
     public function __construct()
     {
-        abort_if(! Helper::setting('team_functionality'), 404);
+        abort_if(! app()->runningInConsole() && ! Helper::setting('team_functionality'), 404);
     }
 
     public function index(Request $request)

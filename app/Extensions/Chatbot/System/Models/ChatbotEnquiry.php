@@ -19,6 +19,7 @@ class ChatbotEnquiry extends Model
         'interest',
         'lead_score',
         'status',
+        'notes',
     ];
 
     protected $casts = [

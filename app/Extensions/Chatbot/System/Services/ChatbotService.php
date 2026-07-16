@@ -285,6 +285,10 @@ class ChatbotService
                 $query->where('chatbot_id', request('chatbot_id'));
             })
 
+            ->when(request('conversation_id') && is_numeric(request('conversation_id')), function (Builder $query) {
+                $query->whereKey((int) request('conversation_id'));
+            })
+
             ->when(request('status') && request('status') !== 'all', function (Builder $query) {
                 $query->where('ticket_status', request('status'));
             })
@@ -335,7 +339,7 @@ class ChatbotService
 
     private function conversationEagerLoads(bool $withUserAvatar = true): array
     {
-        $relations = [$withUserAvatar ? 'histories.user:id,avatar' : 'histories', 'lastMessage'];
+        $relations = [$withUserAvatar ? 'histories.user:id,avatar' : 'histories', 'lastMessage', 'customer', 'enquiry'];
 
         if (MarketplaceHelper::isRegistered('chatbot-customer-tag')) {
             $relations[] = 'customerTags:id,tag,tag_color,background_color';

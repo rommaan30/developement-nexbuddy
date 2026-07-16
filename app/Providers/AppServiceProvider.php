@@ -71,7 +71,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function forceSchemeHttps(): void
     {
-        if ($this->app->environment('production')) {
+        if (
+            $this->app->environment('production')
+            && ! $this->app->runningInConsole()
+            && ! in_array(request()->getHost(), ['127.0.0.1', 'localhost'], true)
+        ) {
             URL::forceScheme('https');
         }
     }
