@@ -27,6 +27,10 @@ Route::post('test', [TestController::class, 'test'])->name('test.post');
 Route::get('test/stream/{model}', [TestController::class, 'stream'])->name('test.stream');
 
 Route::view('test/chatbot', 'default.chatbot');
+
+// Local-only host page for embedding/testing the chatbot widget (no business logic).
+Route::view('chatbot-test', 'chatbot-test')->name('chatbot.test');
+
 Route::get('default', static function () {
     return response()->noContent(
 
