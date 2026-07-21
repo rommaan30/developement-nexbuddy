@@ -138,4 +138,23 @@ class ChatbotEnquiryController extends Controller
                 'message' => __('Enquiry updated.'),
             ]);
     }
+
+    public function destroy(Request $request, ChatbotEnquiry $chatbotEnquiry): RedirectResponse
+    {
+        $chatbotIds = auth()->user()?->externalChatbots()->pluck('id')->toArray() ?? [];
+
+        $enquiry = ChatbotEnquiry::query()
+            ->whereKey($chatbotEnquiry->getKey())
+            ->whereIn('chatbot_id', $chatbotIds)
+            ->firstOrFail();
+
+        $enquiry->delete();
+
+        return redirect()
+            ->route('dashboard.chatbot.enquiries.index', $request->query())
+            ->with([
+                'type'    => 'success',
+                'message' => __('Enquiry deleted successfully.'),
+            ]);
+    }
 }

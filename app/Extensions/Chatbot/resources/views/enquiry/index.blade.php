@@ -332,6 +332,25 @@
                                 >
                                     <x-tabler-eye class="size-4" />
                                 </x-button>
+                                <form
+                                    method="POST"
+                                    action="{{ route('dashboard.chatbot.enquiries.destroy', array_merge(request()->query(), ['chatbotEnquiry' => $entry->id])) }}"
+                                    style="display: inline;"
+                                >
+                                    @csrf
+                                    @method('DELETE')
+                                    <x-button
+                                        class="size-9"
+                                        size="none"
+                                        variant="ghost-shadow"
+                                        hover-variant="danger"
+                                        type="submit"
+                                        onclick="return confirm('{{ __('Are you sure you want to delete this enquiry? This action cannot be undone.') }}')"
+                                        title="{{ __('Delete Enquiry') }}"
+                                    >
+                                        <x-tabler-trash class="size-4" />
+                                    </x-button>
+                                </form>
                             </td>
                         </tr>
                     @endforeach
