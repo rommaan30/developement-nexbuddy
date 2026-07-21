@@ -79,6 +79,11 @@ class ChatbotConversation extends Model
         return $this->hasOne(ChatbotEnquiry::class, 'conversation_id');
     }
 
+    public function enquiries(): HasMany
+    {
+        return $this->hasMany(ChatbotEnquiry::class, 'conversation_id');
+    }
+
     public function histories(): HasMany
     {
         return $this->hasMany(ChatbotHistory::class, 'conversation_id');

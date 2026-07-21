@@ -167,7 +167,8 @@
                 generated embed <code>&lt;script&gt;</code> under the comment block in
                 <code>&lt;head&gt;</code> (or just before <code>&lt;/body&gt;</code>).
             </p>
-            <code><script defer src="http://127.0.0.1:8000/vendor/chatbot/js/external-chatbot.js" data-chatbot-uuid="99267488-fd12-4bb4-bde7-0202c699617b" data-iframe-width="420" data-iframe-height="745" data-language="en" ></script>;</code>
+            <code>
+            <script defer src="http://127.0.0.1:8000/vendor/chatbot/js/external-chatbot.js" data-chatbot-uuid="99267488-fd12-4bb4-bde7-0202c699617b" data-iframe-width="420" data-iframe-height="745" data-language="en" ></script>;</code>
         </section>
     </main>
 </body>

@@ -69,26 +69,63 @@ class ChatbotHistory extends Model
                 return;
             }
 
-            $detected = app(EnquiryDetectorService::class)->detect($conversation);
+            $latestEnquiry = $conversation->enquiries()->latest('id')->first();
+            $histories = $conversation->histories()
+                ->where('role', 'user')
+                ->when($latestEnquiry?->created_at, static function ($query) use ($latestEnquiry) {
+                    $query->where('created_at', '>=', $latestEnquiry->created_at);
+                })
+                ->orderBy('id')
+                ->get();
 
-            if (! $detected['is_enquiry']) {
-                return;
+            if (! $histories->contains(fn (ChatbotHistory $history) => $history->is($this))) {
+                $histories->push($this);
             }
 
-            ChatbotEnquiry::query()->updateOrCreate(
-                [
-                    'conversation_id' => $conversation->getKey(),
-                ],
-                [
+            $candidateHistories = collect();
+
+            foreach ($histories as $history) {
+                $candidateHistories->push($history);
+                $detected = app(EnquiryDetectorService::class)->detect($candidateHistories);
+
+                if (! $detected['is_enquiry']) {
+                    continue;
+                }
+
+                $lead = [
+                    'email'    => $detected['email'] ?: null,
+                    'phone'    => $detected['phone'] ?: null,
+                    'interest' => $detected['interest'] ?: null,
+                ];
+
+                $duplicate = $conversation->enquiries()
+                    ->where(static function ($query) use ($lead) {
+                        foreach ($lead as $column => $value) {
+                            $value === null
+                                ? $query->whereNull($column)
+                                : $query->where($column, $value);
+                        }
+                    })
+                    ->exists();
+
+                if ($duplicate) {
+                    $candidateHistories = collect();
+
+                    continue;
+                }
+
+                $conversation->enquiries()->create([
                     'chatbot_id'          => $conversation->getAttribute('chatbot_id'),
                     'chatbot_customer_id' => $conversation->getAttribute('chatbot_customer_id'),
-                    'email'               => $detected['email'] ?: null,
-                    'phone'               => $detected['phone'] ?: null,
+                    'email'               => $lead['email'],
+                    'phone'               => $lead['phone'],
                     'company'             => $detected['company'] ?: null,
-                    'interest'            => $detected['interest'] ?: null,
+                    'interest'            => $lead['interest'],
                     'lead_score'          => $detected['lead_score'],
-                ]
-            );
+                ]);
+
+                return;
+            }
         } catch (Throwable $e) {
             Log::warning('Chatbot enquiry detection failed.', [
                 'chatbot_history_id' => $this->getKey(),
