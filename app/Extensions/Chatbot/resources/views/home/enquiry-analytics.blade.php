@@ -108,7 +108,7 @@
 
                             <tr id="dashboard-enquiry-{{ $entry->id }}">
                                 <td>
-                                    {{ $entry->customer?->name ?: '-' }}
+                                    {{ $entry->visitor_name ?: ($entry->customer?->name ?: '-') }}
                                 </td>
                                 <td>
                                     {{ $entry->interest ?: '-' }}

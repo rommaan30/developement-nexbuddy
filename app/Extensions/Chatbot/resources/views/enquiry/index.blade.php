@@ -230,7 +230,7 @@
 
                         <tr id="enquiry-{{ $entry->id }}">
                             <td>
-                                {{ $entry->customer?->name ?: '-' }}
+                                {{ $entry->visitor_name ?: ($entry->customer?->name ?: '-') }}
                             </td>
                             <td>
                                 {{ ($entry->email ?: $entry->customer?->email) ?: '-' }}

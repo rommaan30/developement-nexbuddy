@@ -203,6 +203,12 @@ class GeminiGenerator extends Generator
             $systemMessages[] = $this->shopAssistantInstruction();
         }
 
+        $leadInstruction = $this->leadQualificationInstruction();
+
+        if ($leadInstruction) {
+            $systemMessages[] = $leadInstruction;
+        }
+
         // Prepend system message
         if (! empty($systemMessages)) {
             array_unshift($histories, [

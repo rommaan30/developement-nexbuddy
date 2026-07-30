@@ -1,0 +1,2242 @@
+================================================================================
+AI BOT ENQUIRIES — COMPLETE DEVELOPER DOCUMENTATION
+================================================================================
+
+Project        : Nexbuddy (Laravel + MagicAI Chatbot Extension)
+Document Type  : Reverse-engineered implementation documentation
+Scope          : Everything related to the "AI Bot Enquiries" feature
+Rule           : Only documents behaviour that exists in the current codebase
+Generated For  : New developers / Team Lead review / Feature demonstration
+Primary Path   : app/Extensions/Chatbot/
+
+IMPORTANT NOTES
+---------------
+1. This feature does NOT use Livewire for the Enquiries listing or Messages UI.
+   The Enquiries page is a classic Blade + form UI.
+   The Messages / conversation drawer uses Alpine.js (`externalChatbotHistory` /
+   related Alpine stores) and JSON from ChatbotConversationResource.
+2. Detection is synchronous and runs inside ChatbotHistory Eloquent `created`
+   model event — not via a queued job, observer class file, or Laravel Event
+   listener class.
+3. There is no unique database constraint on conversation_id. Multiple enquiry
+   rows per conversation are allowed by schema and by application logic.
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+
+ 1. Feature Overview
+ 2. High Level Architecture
+ 3. Project Structure
+ 4. Database Design
+ 5. Models
+ 6. Complete Execution Flow
+ 7. Detection Logic
+ 8. Controllers
+ 9. Services
+10. Routes
+11. Blade / Livewire UI
+12. Code Flow Diagram
+13. Sequence Diagram
+14. CRUD Flow
+15. Multiple Enquiry Logic
+16. File Modification Summary
+17. Database Query Flow
+18. Security
+19. Error Handling
+20. Testing Performed
+21. Complete Code Walkthrough
+22. Demonstration Guide
+23. Interview Questions
+24. Future Improvements
+25. Conclusion
+
+================================================================================
+1. FEATURE OVERVIEW
+================================================================================
+
+1.1 Why This Feature Exists
+---------------------------
+Website visitors chat with an embedded AI chatbot. Those conversations often
+contain commercial intent and contact details (email, phone, company, interest).
+Previously, that information lived only inside raw chat history rows
+(`ext_chatbot_histories`). Sales / support staff had to open conversations
+manually and scan messages.
+
+AI Bot Enquiries automatically:
+
+  • Detects qualifying lead signals from user messages
+  • Scores the lead
+  • Persists structured enquiry records
+  • Surfaces them in:
+      - Sidebar menu: "AI Bot Enquiries"
+      - Dedicated listing page
+      - AI Chat Bots dashboard analytics
+      - Messages drawer "Extracted Enquiry" card
+
+1.2 Business Requirement
+------------------------
+Capture chatbot leads without requiring a separate lead form.
+
+Expected product outcomes:
+
+  • Every qualifying visitor message flow creates (or skips, if duplicate)
+    a structured enquiry
+  • Admins can filter, sort, update status/notes, open conversation, delete
+  • Dashboard shows counts and latest leads
+  • Messages UI shows extracted enquiry for the conversation (HasOne view)
+
+1.3 Problem Statement
+---------------------
+Chat transcripts are unstructured text. Without extraction:
+
+  • Leads are easy to miss
+  • No lead score
+  • No status pipeline (new / contacted / qualified / closed)
+  • No centralized enquiry list across owned chatbots
+
+1.4 Expected Behaviour (As Implemented)
+---------------------------------------
+WHEN a visitor sends a user-role message through the chatbot API
+AND ChatbotHistory is created with role = "user"
+THEN ChatbotHistory::booted() created hook runs detectAndStoreEnquiry()
+AND EnquiryDetectorService analyses candidate user messages
+AND if lead_score >= 50 AND not a duplicate of email+phone+interest
+THEN a new row is inserted into ext_chatbot_enquiries
+AND the enquiry appears on the AI Bot Enquiries page for the chatbot owner
+
+Additional behaviours that exist:
+
+  • Multiple distinct enquiries can exist for one conversation
+  • Exact same email+phone+interest combination in the same conversation is
+    treated as duplicate and skipped
+  • Detection failures are logged as warnings; chat message flow continues
+  • Deleting an enquiry deletes only the enquiry row (not conversation/history)
+  • After delete, a later qualifying user message can create a new enquiry again
+
+1.5 Final Architecture (Summary)
+--------------------------------
+Embedded Widget / Test Page
+        |
+        v
+API ChatbotApplicationController::storeMessage()
+        |
+        v
+insertMessage() -> ChatbotHistory::create()
+        |
+        v
+Eloquent Model Event: ChatbotHistory::created
+        |
+        v
+ChatbotHistory::detectAndStoreEnquiry()
+        |
+        v
+EnquiryDetectorService (+ Email/Phone/Company/Interest detectors + LeadScorer)
+        |
+        v
+Duplicate check on conversation.enquiries()
+        |
+        v
+ChatbotEnquiry create (ext_chatbot_enquiries)
+        |
+        +--> ChatbotEnquiryController::index (listing)
+        +--> ChatbotController::index (dashboard analytics)
+        +--> ChatbotConversationResource enquiry payload (Messages UI)
+
+================================================================================
+2. HIGH LEVEL ARCHITECTURE
+================================================================================
+
+ASCII Architecture Diagram
+--------------------------
+
+  +------------------+       +---------------------------+
+  | Website Visitor  |       | Local Test Page           |
+  | (Embedded Widget)|       | /chatbot-test             |
+  +--------+---------+       +-------------+-------------+
+           |                               |
+           +---------------+---------------+
+                           |
+                           v
+           +-----------------------------------+
+           | Embed Script / Chatbot Frame      |
+           | chatbot/{uuid}/frame              |
+           +-----------------+-----------------+
+                             |
+                             v
+           +-----------------------------------+
+           | API v2 Chatbot                    |
+           | POST .../messages                 |
+           | ChatbotApplicationController      |
+           |   ::storeMessage()                |
+           |   ::insertMessage()               |
+           +-----------------+-----------------+
+                             |
+                             v
+           +-----------------------------------+
+           | Conversation                      |
+           | ext_chatbot_conversations         |
+           | ChatbotConversation model         |
+           +-----------------+-----------------+
+                             |
+                             v
+           +-----------------------------------+
+           | Chat History Row Created          |
+           | ext_chatbot_histories             |
+           | ChatbotHistory model              |
+           +-----------------+-----------------+
+                             |
+                             v
+           +-----------------------------------+
+           | Model Hook (booted created)       |
+           | detectAndStoreEnquiry()           |
+           +-----------------+-----------------+
+                             |
+                             v
+           +-----------------------------------+
+           | EnquiryDetectorService            |
+           |  - EmailDetector                  |
+           |  - PhoneDetector                  |
+           |  - CompanyDetector                |
+           |  - InterestDetector               |
+           |  - LeadScorer                     |
+           +-----------------+-----------------+
+                             |
+              +--------------+--------------+
+              | score < 50                  | score >= 50
+              | (ignore)                    | + duplicate check
+              v                             v
+           (no write)           +---------------------------+
+                                | ChatbotEnquiry            |
+                                | ext_chatbot_enquiries     |
+                                +-------------+-------------+
+                                              |
+                 +----------------------------+----------------------------+
+                 |                            |                            |
+                 v                            v                            v
+    +----------------------+   +----------------------+   +----------------------+
+    | AI Bot Enquiries     |   | AI Chat Bots Home    |   | Messages Drawer      |
+    | Listing Page         |   | Analytics + Card     |   | Extracted Enquiry    |
+    | EnquiryController    |   | ChatbotController    |   | Alpine + Resource    |
+    +----------------------+   +----------------------+   +----------------------+
+
+Major Components Inventory
+--------------------------
+Component                         Role
+--------------------------------  ----------------------------------------------
+Chatbot embed / frame             Visitor UI entry
+ChatbotApplicationController      Creates user history rows
+ChatbotHistory                    Persistence + detection trigger
+EnquiryDetectorService            Orchestrates detectors + scoring
+EmailDetector                     Regex email extraction
+PhoneDetector                     Regex phone extraction + normalize
+CompanyDetector                   Regex company extraction
+InterestDetector                  Keyword group interest extraction
+LeadScorer                        Weighted score 0–100
+ChatbotEnquiry                    Eloquent model for leads
+ChatbotEnquiryController          Admin CRUD-ish (index/update/destroy)
+ChatbotController                 Dashboard counts + latest enquiries
+ChatbotService                    Eager-loads enquiry on conversations
+ChatbotConversationResource       JSON enquiry for Messages UI
+MenuService                       Sidebar item ext_chatbot_enquiries
+Blade views                       Listing, analytics, actions, contact card
+
+================================================================================
+3. PROJECT STRUCTURE
+================================================================================
+
+All enquiry-related files under the Chatbot extension (and related app services):
+
+app/Extensions/Chatbot/
+├── database/migrations/
+│   ├── 2026_07_15_000000_create_ext_chatbot_enquiries_table.php
+│   ├── 2026_07_15_000001_add_notes_to_ext_chatbot_enquiries_table.php
+│   └── 2026_07_15_000002_add_ext_chatbot_enquiries_menu.php
+├── System/
+│   ├── ChatbotServiceProvider.php                    (MODIFIED — routes)
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Api/ChatbotApplicationController.php  (EXISTING — creates history)
+│   │   │   ├── ChatbotController.php                 (MODIFIED — analytics)
+│   │   │   └── ChatbotEnquiryController.php          (NEW)
+│   │   └── Resources/Admin/
+│   │       └── ChatbotConversationResource.php       (MODIFIED — enquiry JSON)
+│   ├── Models/
+│   │   ├── ChatbotEnquiry.php                        (NEW)
+│   │   ├── ChatbotHistory.php                        (MODIFIED — detection hook)
+│   │   ├── ChatbotConversation.php                   (MODIFIED — relationships)
+│   │   └── ChatbotCustomer.php                       (MODIFIED — enquiries())
+│   └── Services/
+│       ├── ChatbotService.php                        (MODIFIED — eager load)
+│       └── Enquiry/
+│           ├── EnquiryDetectorService.php            (NEW)
+│           ├── EmailDetector.php                     (NEW)
+│           ├── PhoneDetector.php                     (NEW)
+│           ├── CompanyDetector.php                   (NEW)
+│           ├── InterestDetector.php                  (NEW)
+│           └── LeadScorer.php                        (NEW)
+└── resources/views/
+    ├── index.blade.php                               (MODIFIED — include analytics)
+    ├── enquiry/index.blade.php                       (NEW)
+    └── home/
+        ├── actions-grid.blade.php                    (MODIFIED — enquiries card)
+        ├── enquiry-analytics.blade.php               (NEW)
+        └── chats-history/
+            ├── chats-history.blade.php               (MODIFIED — Alpine helpers)
+            └── particles/
+                └── contact-info-tab-details.blade.php (MODIFIED — Extracted Enquiry)
+
+app/Services/Common/MenuService.php                   (MODIFIED — menu definition)
+
+app/Domains/Marketplace/MarketplaceServiceProvider.php (EXISTING — extension bootstrap)
+  Maps extension key 'chatbot' to:
+  App\Extensions\Chatbot\System\ChatbotServiceProvider::class
+  This is how enquiry routes, migrations, and views are loaded at runtime.
+
+NOTE — Two different ChatbotServiceProvider classes exist:
+  1) app/Providers/ChatbotServiceProvider.php
+     Core embed/token/chatbot-api routes (NOT enquiry routes).
+  2) app/Extensions/Chatbot/System/ChatbotServiceProvider.php
+     Extension provider that registers dashboard/chatbot/* routes including
+     enquiries.index|update|destroy, loads views as chatbot::*, and runs
+     extension migrations.
+
+Supporting (local testing; not core runtime of detection):
+  resources/views/chatbot-test.blade.php
+  docs/CHATBOT_LOCAL_TESTING.md
+  routes/web.php                                      (chatbot-test route if present)
+
+--------------------------------------------------------------------------------
+FILE-BY-FILE EXPLANATION
+--------------------------------------------------------------------------------
+
+A) NEWLY CREATED FILES
+----------------------
+
+1) app/Extensions/Chatbot/System/Models/ChatbotEnquiry.php
+   Why it exists : Eloquent model for table ext_chatbot_enquiries
+   What it does  : fillable, casts, belongsTo chatbot/conversation/customer
+   Why created   : Persist structured leads separately from chat history
+
+2) app/Extensions/Chatbot/System/Http/Controllers/ChatbotEnquiryController.php
+   Why it exists : Admin UI backend for listing/updating/deleting enquiries
+   What it does  : index(), update(), destroy() with ownership scoping
+   Why created   : Provide dashboard management without mixing into ChatbotController
+
+3) app/Extensions/Chatbot/System/Services/Enquiry/EnquiryDetectorService.php
+   Why it exists : Orchestrate detectors and decide is_enquiry
+   What it does  : detect(ChatbotConversation|Collection): array
+   Why created   : Keep detection logic out of the Eloquent model / controller
+
+4) EmailDetector.php / PhoneDetector.php / CompanyDetector.php /
+   InterestDetector.php / LeadScorer.php
+   Why they exist : Single-responsibility detectors and scoring
+   What they do   : Extract fields / compute score
+   Why created    : Testable, replaceable detection units
+
+5) Migrations 2026_07_15_000000 / 000001 / 000002
+   Why they exist : Schema + notes column + menus table backfill
+   What they do   : Create table, add notes, insert menu key
+   Why created    : Persist data and surface sidebar entry in DB-driven menus
+
+6) resources/views/enquiry/index.blade.php
+   Why it exists : Full listing UI
+   What it does  : Filters, table, status/notes forms, open conversation, delete
+   Why created   : Dedicated management screen
+
+7) resources/views/home/enquiry-analytics.blade.php
+   Why it exists : Dashboard analytics section
+   What it does  : Status cards + latest enquiries table snippet
+   Why created   : Surface lead metrics on AI Chat Bots home
+
+B) MODIFIED EXISTING FILES
+--------------------------
+
+1) ChatbotHistory.php
+   Modified to add booted() created hook and private detectAndStoreEnquiry()
+   Reason: automatic detection on every new user message without changing
+           every API call site
+
+2) ChatbotConversation.php
+   Added enquiry(): HasOne and enquiries(): HasMany
+   Reason: Messages UI uses HasOne; multi-enquiry persistence uses HasMany
+
+3) ChatbotCustomer.php
+   Added enquiries(): HasMany
+   Reason: relate customer to their enquiry rows via chatbot_customer_id
+
+4) ChatbotServiceProvider.php
+   Registered GET/PATCH/DELETE enquiry routes under dashboard/chatbot
+   Reason: wire controller to HTTP
+
+5) ChatbotController.php
+   Loads enquiry counts, status aggregates, latest 10 enquiries for home view
+   Reason: dashboard analytics
+
+6) ChatbotService.php
+   conversationEagerLoads() includes 'enquiry'
+   Reason: Messages list JSON includes enquiry without N+1
+
+7) ChatbotConversationResource.php
+   Maps enquiry relation into JSON for Alpine Messages UI
+   Reason: show Extracted Enquiry card
+
+8) MenuService.php
+   Defines ext_chatbot_enquiries menu item; regenerate ordering uses
+   orderBy('order')->orderBy('id')
+   Reason: sidebar navigation
+
+9) Views: index, actions-grid, chats-history, contact-info-tab-details
+   Reason: UI entry points and conversation-side display
+
+C) EXISTING FILES THAT PARTICIPATE BUT WERE NOT "ENQUIRY FEATURE" ORIGINALS
+---------------------------------------------------------------------------
+ChatbotApplicationController::storeMessage / insertMessage
+  Creates ChatbotHistory rows. Detection runs as a side effect of create().
+  Enquiry feature depends on this path but the controller itself is the
+  pre-existing message pipeline.
+
+================================================================================
+
+================================================================================
+4. DATABASE DESIGN
+================================================================================
+
+4.1 Table Name
+--------------
+ext_chatbot_enquiries
+
+Created by migration:
+  app/Extensions/Chatbot/database/migrations/
+  2026_07_15_000000_create_ext_chatbot_enquiries_table.php
+
+Notes column added by:
+  2026_07_15_000001_add_notes_to_ext_chatbot_enquiries_table.php
+
+4.2 Columns (Final Schema After Both Migrations)
+------------------------------------------------
+
+Column                 Type                 Nullable   Default      Purpose
+---------------------  -------------------  ---------  -----------  ---------------------------
+id                     bigint unsigned PK   NO         auto         Primary key
+chatbot_id             foreignId            NO         —            Owning chatbot
+conversation_id        foreignId            NO         —            Source conversation
+chatbot_customer_id    foreignId            YES        NULL         Linked customer if any
+email                  string               YES        NULL         Detected email
+phone                  string               YES        NULL         Detected/normalized phone
+company                string               YES        NULL         Detected company
+interest               string               YES        NULL         Detected interest label
+lead_score             integer              NO         0            Score from LeadScorer
+status                 string               NO         'new'        Pipeline status
+notes                  text                 YES        NULL         Internal admin notes
+created_at             timestamp            YES        NULL         Laravel timestamps
+updated_at             timestamp            YES        NULL         Laravel timestamps
+
+4.3 Foreign Keys
+----------------
+chatbot_id
+  -> ext_chatbots.id
+  onDelete: cascadeOnDelete
+  Why: when chatbot deleted, its enquiries must go
+
+conversation_id
+  -> ext_chatbot_conversations.id
+  onDelete: cascadeOnDelete
+  Why: conversation deletion removes related enquiries
+
+chatbot_customer_id
+  -> ext_chatbot_customers.id
+  onDelete: nullOnDelete
+  Why: customer deletion should not destroy enquiry history; set null
+
+4.4 Indexes
+-----------
+Migration creates:
+  - Primary key on id
+  - Foreign key indexes (Laravel foreignId convention)
+
+There is NO unique index on conversation_id.
+There is NO unique composite index on (conversation_id, email, phone, interest).
+Duplicate prevention is application-level only (see Section 7 and 15).
+
+4.5 Column-by-Column Usage
+--------------------------
+
+chatbot_id
+  Required: YES (FK, not nullable)
+  How used: Ownership scoping in controllers:
+            whereIn('chatbot_id', auth()->user()->externalChatbots()->pluck('id'))
+  How queried: index filters, dashboard counts, destroy/update ownership checks
+  Set on create from: $conversation->chatbot_id
+
+conversation_id
+  Required: YES
+  How used: Link to chat; Open Conversation button; multi-enquiry grouping
+  How queried: conversation->enquiries(), HasOne enquiry() for Messages UI
+  Set on create via: $conversation->enquiries()->create(...) which sets FK
+
+chatbot_customer_id
+  Required: NO
+  How used: Display customer name in listing via with('customer:...')
+  Set on create from: $conversation->chatbot_customer_id
+
+email / phone / company / interest
+  Required: NO individually
+  How used: Display, search filters, duplicate comparison (email+phone+interest)
+  Source: EnquiryDetectorService detect() output
+
+lead_score
+  Required: YES (default 0)
+  How used: Filters 0-49 / 50-79 / 80-100; sorting by lead_score; UI badges
+  Source: LeadScorer; only rows with score >= 50 are created by detection path
+
+status
+  Required: YES (default 'new')
+  Allowed in controller validation: new, contacted, qualified, closed
+  How used: Filter, analytics groupBy, badge colours
+
+notes
+  Required: NO
+  Max length on update validation: 5000
+  How used: Admin internal notes on listing page
+
+4.6 Related Tables (Read/Joined, Not Created By This Feature)
+-------------------------------------------------------------
+ext_chatbots                 Chatbot ownership (user_id)
+ext_chatbot_conversations    Conversation container
+ext_chatbot_histories        Message rows that trigger detection
+ext_chatbot_customers        Optional customer profile
+menus                        DB-driven sidebar (menu migration inserts key)
+
+4.7 Menu Migration Side Effect
+------------------------------
+Migration 2026_07_15_000002_add_ext_chatbot_enquiries_menu.php inserts into
+`menus` if key `ext_chatbot_enquiries` does not exist, then calls
+MenuService::regenerate().
+
+================================================================================
+5. MODELS
+================================================================================
+
+5.1 ChatbotEnquiry
+------------------
+File: app/Extensions/Chatbot/System/Models/ChatbotEnquiry.php
+Table: ext_chatbot_enquiries
+
+Purpose:
+  Represent one detected lead/enquiry record.
+
+Properties (fillable):
+  chatbot_id, conversation_id, chatbot_customer_id,
+  email, phone, company, interest, lead_score, status, notes
+
+Casts:
+  chatbot_id, conversation_id, chatbot_customer_id, lead_score => integer
+
+Relationships:
+
+  ChatbotEnquiry
+       |
+       +-- belongsTo Chatbot              chatbot()
+       +-- belongsTo ChatbotConversation  conversation()
+       +-- belongsTo ChatbotCustomer      customer()  (FK chatbot_customer_id)
+
+Methods: relationship methods only (no custom business methods on model).
+
+5.2 ChatbotHistory (Detection Trigger)
+--------------------------------------
+File: app/Extensions/Chatbot/System/Models/ChatbotHistory.php
+Table: ext_chatbot_histories
+
+Purpose (for this feature):
+  Persist messages AND trigger enquiry detection on create.
+
+Key additions for this feature:
+  protected static function booted(): void
+    static::created(... detectAndStoreEnquiry())
+
+  private function detectAndStoreEnquiry(): void
+    Full multi-enquiry detection + persistence logic
+
+Relationships used:
+  conversation(): BelongsTo ChatbotConversation
+
+5.3 ChatbotConversation
+-----------------------
+File: app/Extensions/Chatbot/System/Models/ChatbotConversation.php
+
+Enquiry-related relationships:
+
+  enquiry(): HasOne ChatbotEnquiry
+    Used by Messages UI / ChatbotService eager load / Resource
+    Laravel HasOne returns ONE related row (typically first matching row
+    unless constrained). Feature keeps HasOne for UI while supporting
+    multiple rows via HasMany.
+
+  enquiries(): HasMany ChatbotEnquiry
+    Used by detectAndStoreEnquiry() for latest enquiry, duplicate check,
+    and create().
+
+  histories(): HasMany ChatbotHistory
+    Used to load user messages for detection window.
+
+Relationship diagram:
+
+  ChatbotConversation
+       |
+       +-- hasOne  ChatbotEnquiry     enquiry()     [Messages UI]
+       +-- hasMany ChatbotEnquiry     enquiries()   [Detection + multi]
+       +-- hasMany ChatbotHistory     histories()
+
+5.4 ChatbotCustomer
+-------------------
+File: app/Extensions/Chatbot/System/Models/ChatbotCustomer.php
+
+  enquiries(): HasMany ChatbotEnquiry (FK chatbot_customer_id)
+
+Diagram:
+
+  ChatbotCustomer
+       |
+       +-- hasMany ChatbotEnquiry
+
+5.5 Full Relationship Map
+-------------------------
+
+  User
+   |
+   +-- externalChatbots()  (existing) --> Chatbot
+                                            |
+                                            +-- conversations --> ChatbotConversation
+                                            |                        |
+                                            |                        +-- histories --> ChatbotHistory
+                                            |                        +-- enquiries  --> ChatbotEnquiry
+                                            |                        +-- customer   --> ChatbotCustomer
+                                            |
+                                            +-- (enquiries scoped by chatbot_id)
+
+  ChatbotEnquiry
+   |
+   +-- chatbot_id -----------> Chatbot
+   +-- conversation_id -------> ChatbotConversation
+   +-- chatbot_customer_id ---> ChatbotCustomer (nullable)
+
+================================================================================
+6. COMPLETE EXECUTION FLOW
+================================================================================
+
+This section traces the full path from visitor message to dashboard display.
+
+--------------------------------------------------------------------------------
+STEP 1 — User Types Message In Widget / Test Page
+--------------------------------------------------------------------------------
+Actor   : Website visitor or tester
+UI      : Embedded chatbot widget OR resources/views/chatbot-test.blade.php
+Purpose : Capture free-text prompt (and optional media)
+
+--------------------------------------------------------------------------------
+STEP 2 — Widget Sends HTTP Request
+--------------------------------------------------------------------------------
+Method  : POST
+Route   : api/v2/chatbot/{chatbot:uuid}/session/{sessionId}/conversation/{chatbotConversation}/messages
+Name    : api.v2.chatbot.conversion.store.message
+File    : ChatbotServiceProvider.php (API group)
+Middleware: api, LanguageMiddleware
+
+--------------------------------------------------------------------------------
+STEP 3 — Controller Receives Request
+--------------------------------------------------------------------------------
+File    : app/Extensions/Chatbot/System/Http/Controllers/Api/ChatbotApplicationController.php
+Method  : storeMessage(ChatbotHistoryStoreRequest $request, Chatbot $chatbot,
+            string $sessionId, ChatbotConversation $chatbotConversation)
+Purpose :
+  - Validate conversation belongs to chatbot and session
+  - Optional media upload
+  - Call insertMessage(..., role: 'user', ...)
+  - Generate AI response (unless agent connected)
+  - Insert assistant message
+
+--------------------------------------------------------------------------------
+STEP 4 — Conversation Validated / Retrieved
+--------------------------------------------------------------------------------
+Already route-model-bound as $chatbotConversation.
+Additional checks abort(404) if chatbot_id or session_id mismatch.
+
+--------------------------------------------------------------------------------
+STEP 5 — History Stored (User Message)
+--------------------------------------------------------------------------------
+File/Method: ChatbotApplicationController::insertMessage()
+Action     : ChatbotHistory::query()->create([... role => $role ...])
+Table      : ext_chatbot_histories
+Result     : New ChatbotHistory model instance returned
+
+Also updates conversation last_activity_at; may dispatch panel events for agent.
+
+--------------------------------------------------------------------------------
+STEP 6 — Eloquent Created Hook Fires
+--------------------------------------------------------------------------------
+File    : ChatbotHistory.php
+Method  : booted() -> static::created callback
+Calls   : $history->detectAndStoreEnquiry()
+Purpose : Side-effect detection after every history insert
+
+IMPORTANT: This also fires for assistant/role messages, but step 7 exits early
+unless role === 'user'.
+
+--------------------------------------------------------------------------------
+STEP 7 — Early Exit Guards Inside detectAndStoreEnquiry()
+--------------------------------------------------------------------------------
+File/Method: ChatbotHistory::detectAndStoreEnquiry()
+
+Guard A: if role !== 'user' OR conversation_id missing -> return
+Guard B: if conversation()->first() is null -> return
+
+--------------------------------------------------------------------------------
+STEP 8 — Build Detection Window Of User Histories
+--------------------------------------------------------------------------------
+Same method:
+
+  $latestEnquiry = $conversation->enquiries()->latest('id')->first();
+
+  $histories = $conversation->histories()
+      ->where('role', 'user')
+      ->when($latestEnquiry?->created_at, fn ($q) =>
+          $q->where('created_at', '>=', $latestEnquiry->created_at))
+      ->orderBy('id')
+      ->get();
+
+  Ensure current history is in collection (push if missing).
+
+Purpose:
+  After an enquiry exists, only consider user messages from that enquiry's
+  created_at onward — so prior lead text does not keep re-triggering forever
+  as one blob, and new leads can form from newer messages.
+
+--------------------------------------------------------------------------------
+STEP 9 — Incremental Candidate Window + Detector Executes
+--------------------------------------------------------------------------------
+Loop over histories chronologically:
+
+  candidateHistories grows message by message
+  detected = app(EnquiryDetectorService::class)->detect($candidateHistories)
+
+File    : EnquiryDetectorService.php
+Method  : detect()
+
+Inside detect():
+  1. buildUserMessageText() — join user messages with newline
+  2. EmailDetector::detect($text)
+  3. PhoneDetector::detect($text)
+  4. CompanyDetector::detect($text)
+  5. InterestDetector::detect($text)
+  6. InterestDetector::countMatches($text)
+  7. LeadScorer::score(...)
+  8. is_enquiry = lead_score >= 50 (MINIMUM_ENQUIRY_SCORE)
+
+--------------------------------------------------------------------------------
+STEP 10 — Extracted Fields
+--------------------------------------------------------------------------------
+Returned keys:
+  email, phone, company, interest, matched_keyword, lead_score, is_enquiry
+
+If !is_enquiry -> continue loop (try larger candidate window)
+
+--------------------------------------------------------------------------------
+STEP 11 — Duplicate Check
+--------------------------------------------------------------------------------
+Lead identity for duplicate:
+  email, phone, interest  (company NOT part of duplicate key)
+
+Query:
+  $conversation->enquiries()
+    ->where(function ($query) use ($lead) {
+        foreach email/phone/interest:
+          null  -> whereNull(column)
+          value -> where(column, value)
+    })->exists();
+
+If duplicate:
+  reset candidateHistories = collect()
+  continue (do not create)
+
+--------------------------------------------------------------------------------
+STEP 12 — Enquiry Created
+--------------------------------------------------------------------------------
+$conversation->enquiries()->create([
+  chatbot_id,
+  chatbot_customer_id,
+  email, phone, company, interest,
+  lead_score,
+]);
+
+Notes:
+  - status defaults to 'new' at DB level
+  - notes defaults to null
+  - Method returns immediately after first successful create in the loop
+
+--------------------------------------------------------------------------------
+STEP 13 — Exception Handling
+--------------------------------------------------------------------------------
+Any Throwable in detectAndStoreEnquiry is caught:
+  Log::warning('Chatbot enquiry detection failed.', [...])
+Chat UX continues normally.
+
+--------------------------------------------------------------------------------
+STEP 14 — Admin Opens AI Bot Enquiries
+--------------------------------------------------------------------------------
+Route GET dashboard/chatbot/enquiries
+Controller ChatbotEnquiryController::index
+Scopes by user's externalChatbots ids
+Renders chatbot::enquiry.index
+
+--------------------------------------------------------------------------------
+STEP 15 — Dashboard Displays Enquiry Analytics
+--------------------------------------------------------------------------------
+Route GET dashboard/chatbot
+Controller ChatbotController::index
+Computes total/status counts + latest 10
+Views: actions-grid card + enquiry-analytics include
+
+--------------------------------------------------------------------------------
+STEP 16 — Messages Drawer Shows Extracted Enquiry
+--------------------------------------------------------------------------------
+ChatbotService eager-loads enquiry
+ChatbotConversationResource maps enquiry JSON
+contact-info-tab-details.blade.php shows Alpine-bound Extracted Enquiry card
+(Uses HasOne enquiry — one card per conversation in UI)
+
+================================================================================
+7. DETECTION LOGIC
+================================================================================
+
+7.1 Orchestrator
+----------------
+Class  : App\Extensions\Chatbot\System\Services\Enquiry\EnquiryDetectorService
+Method : detect(ChatbotConversation|Collection $source): array
+Constant: MINIMUM_ENQUIRY_SCORE = 50
+
+7.2 How Email Is Detected
+-------------------------
+Class/Method: EmailDetector::detect(string $text): array
+Pattern     : /[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i
+Behaviour   : First regex match; returns {email, found}
+Not used    : DNS validation, disposable email lists, etc.
+
+7.3 How Phone Is Detected
+-------------------------
+Class/Method: PhoneDetector::detect(string $text): array
+Patterns:
+  INTERNATIONAL_PHONE_PATTERN
+    (?<!\w)\+(?:\d[\s().-]?){7,15}\d(?!\w)
+  LOCAL_PHONE_PATTERN
+    (?<![\d+])(?:\d[\s().-]?){9}\d(?!\d)
+Order: international first, then local
+Normalize: keep leading '+', strip non-digits otherwise via normalizePhone()
+
+7.4 How Company Is Detected
+---------------------------
+Class/Method: CompanyDetector::detect(string $text): array
+Patterns tried in order:
+  1) COMPANY_SUFFIX_PATTERN — capitalized words ending with
+     Pvt Ltd / Private Limited / Ltd / Inc / LLP
+  2) COMPANY_CONTEXT_PATTERN — after words company|organization|
+     organisation|business|firm ...
+cleanCompanyName() trims trailing conversational words.
+
+7.5 How Interest Is Detected
+----------------------------
+Class/Method: InterestDetector::detect(string $text): array
+Keyword groups (first match wins, group order matters):
+
+  Pricing     : pricing, price, quotation, quote, cost
+  Sales       : buy, purchase, subscription, plan, enterprise
+  Demo        : demo, trial, testing
+  Integration : integration, api, website, embed
+  Support     : issue, help, support
+  Callback    : contact, call me, callback, reach me
+
+Matching: word-boundary regex case-insensitive via containsKeyword()
+
+countMatches(): counts every keyword hit across all groups (used for bonus)
+
+7.6 How Lead Score Is Calculated
+--------------------------------
+Class/Method: LeadScorer::score(...): array
+Weights:
+  email found                 +30
+  phone found                 +30
+  company found               +10
+  interest found              +20
+  interestKeywordCount > 1    +10
+Cap: min(score, MAX_SCORE=100)
+
+Examples that qualify (score >= 50):
+  email + phone                 = 60
+  email + interest              = 50
+  phone + interest              = 50
+  email + company + interest    = 60
+  interest alone                = 20  (NOT enquiry)
+  email alone                   = 30  (NOT enquiry)
+  phone + company               = 40  (NOT enquiry)
+
+7.7 Duplicate Prevention
+------------------------
+Location: ChatbotHistory::detectAndStoreEnquiry()
+Scope   : Same conversation only
+Key     : email + phone + interest (null-safe equality)
+Not key : company, lead_score, status, notes
+Action  : If exists -> skip create; reset candidate window; continue loop
+
+7.8 Multiple Enquiries In Same Conversation
+-------------------------------------------
+After creating enquiry A, later user messages use histories with
+created_at >= latestEnquiry.created_at.
+A new combination of email/phone/interest can create enquiry B.
+Exact same combination is ignored.
+
+7.9 Same Enquiry Updated Or Ignored?
+------------------------------------
+Current implementation does NOT updateOrCreate.
+It either:
+  - creates a new row, or
+  - skips as duplicate
+There is no merge/update of an existing enquiry from detection.
+Admin can PATCH status/notes via controller update().
+
+================================================================================
+8. CONTROLLERS
+================================================================================
+
+8.1 ChatbotEnquiryController
+----------------------------
+File: app/Extensions/Chatbot/System/Http/Controllers/ChatbotEnquiryController.php
+Namespace: App\Extensions\Chatbot\System\Http\Controllers
+
+Constants:
+  STATUSES          = new, contacted, qualified, closed
+  LEAD_SCORE_FILTERS = 0-49, 50-79, 80-100
+  SORT_OPTIONS       = latest, oldest, lead_score
+
+METHOD: index(Request $request): View
+-------------------------------------
+Purpose:
+  Render paginated, filterable list of enquiries owned by the auth user.
+
+Request (query params):
+  search, status, interest, lead_score, start_date, end_date, sort, per_page
+
+Validation:
+  Soft validation via allow-lists (array_key_exists on STATUSES / filters).
+  Invalid status/lead_score filters are simply ignored.
+  sort defaults to 'latest' if unknown.
+
+Database operations:
+  1) chatbotIds = auth user externalChatbots pluck id
+  2) scopedQuery = ChatbotEnquiry::whereIn('chatbot_id', chatbotIds)
+  3) totalEnquiries = count of scoped (unfiltered) for KPI card
+  4) items = clone with filters + with customer:id,name,email,phone + paginate
+  5) interests = distinct interest values for filter dropdown
+
+Response:
+  view('chatbot::enquiry.index', [...])
+
+Redirection: none (GET render)
+
+METHOD: update(Request $request, ChatbotEnquiry $chatbotEnquiry): RedirectResponse
+---------------------------------------------------------------------------------
+Purpose:
+  Update status and notes for one enquiry the user owns.
+
+Request body:
+  status (required, Rule::in statuses)
+  notes  (nullable, string, max:5000)
+
+Database:
+  Re-query with whereKey + whereIn chatbot_id -> firstOrFail
+  then $enquiry->update($data)
+
+Response / Redirect:
+  redirect()->route('dashboard.chatbot.enquiries.index', $request->query())
+  flash type=success message="Enquiry updated."
+
+METHOD: destroy(Request $request, ChatbotEnquiry $chatbotEnquiry): RedirectResponse
+----------------------------------------------------------------------------------
+Purpose:
+  Soft? No — hard delete the enquiry row only.
+
+Database:
+  Ownership re-query firstOrFail then $enquiry->delete()
+
+Does NOT delete:
+  conversation, histories, customer, chatbot
+
+Redirect:
+  same index route with query string preserved
+  flash "Enquiry deleted successfully."
+
+8.2 ChatbotController (partial — enquiry analytics only)
+--------------------------------------------------------
+File: app/Extensions/Chatbot/System/Http/Controllers/ChatbotController.php
+Method: index(Request $request): View
+
+Enquiry-related operations inside index():
+  $enquiryQuery = ChatbotEnquiry::whereIn('chatbot_id', $externalChatbots)
+  $totalEnquiriesCount = count
+  $enquiryStatusCounts = selectRaw status groupBy -> pluck
+  $latestEnquiries = with customer, latest, limit 10
+
+Passed to view:
+  totalEnquiriesCount
+  enquiryAnalytics[total,new,contacted,qualified,closed]
+  latestEnquiries
+
+8.3 ChatbotApplicationController (trigger path only)
+----------------------------------------------------
+File: .../Api/ChatbotApplicationController.php
+Methods involved:
+  storeMessage()  — primary visitor message entry
+  insertMessage() — ChatbotHistory::create which fires detection
+  appendMessage() — also creates history (role from request); detection
+                    runs if role is user
+
+No direct ChatbotEnquiry writes in this controller.
+
+================================================================================
+9. SERVICES
+================================================================================
+
+9.1 Why A Service Layer Was Used
+--------------------------------
+Detection involves multiple regex extractors + scoring rules.
+Putting that in:
+  - Controllers would couple HTTP to NLP-ish rules
+  - Eloquent models would mix persistence with extraction
+Service layer (EnquiryDetectorService + detectors) keeps:
+  - Single responsibility
+  - Reusable detect(Conversation|Collection)
+  - Easy unit testing of detectors independently
+  - Thin model hook that only decides when to persist
+
+9.2 EnquiryDetectorService
+--------------------------
+File: System/Services/Enquiry/EnquiryDetectorService.php
+
+Constructor injects (with default new instances):
+  EmailDetector, PhoneDetector, CompanyDetector, InterestDetector, LeadScorer
+
+Public:
+  detect(ChatbotConversation|Collection): array
+
+Private:
+  historiesFromSource()
+  buildUserMessageText()
+
+Responsibility:
+  Orchestrate detectors, compute is_enquiry threshold.
+
+9.3 EmailDetector / PhoneDetector / CompanyDetector / InterestDetector
+----------------------------------------------------------------------
+Each exposes detect(string $text): array with found flag + field.
+InterestDetector also exposes countMatches(string $text): int.
+
+9.4 LeadScorer
+--------------
+score(email, phone, company, interest, interestKeywordCount=0): array
+Returns ['lead_score' => int]
+
+9.5 ChatbotService (supporting)
+-------------------------------
+File: System/Services/ChatbotService.php
+Method: conversationEagerLoads()
+Includes 'enquiry' so conversation JSON for Messages includes enquiry data.
+
+================================================================================
+10. ROUTES
+================================================================================
+
+10.1 Web / Dashboard Routes (auth required)
+-------------------------------------------
+Registered in ChatbotServiceProvider under:
+  middleware: web, auth
+  prefix: dashboard/chatbot
+  as: dashboard.chatbot.
+
+METHOD   URI                                    NAME                         ACTION
+------   ------------------------------------   --------------------------   -------------------------
+GET      dashboard/chatbot/enquiries            enquiries.index              ChatbotEnquiryController@index
+PATCH    dashboard/chatbot/enquiries/{id}       enquiries.update             ChatbotEnquiryController@update
+DELETE   dashboard/chatbot/enquiries/{id}       enquiries.destroy            ChatbotEnquiryController@destroy
+
+Parameter binding: {chatbotEnquiry} -> ChatbotEnquiry model
+
+Permissions / Auth:
+  Middleware auth ensures logged-in user.
+  Fine-grained ownership enforced in controller via externalChatbots ids
+  (not a dedicated Gate/Policy class for ChatbotEnquiry).
+
+Flow after route:
+  index  -> Blade listing
+  update -> validate -> update -> redirect index + flash
+  destroy-> delete -> redirect index + flash
+
+Related dashboard route used by "Open Conversation":
+  GET dashboard/chatbot  name dashboard.chatbot.index
+  with query ?conversation_id={id}
+
+10.2 API Routes (message creation — triggers detection)
+-------------------------------------------------------
+prefix: api/v2/chatbot
+as: api.v2.chatbot.
+middleware: api, LanguageMiddleware
+
+Relevant:
+  POST {uuid}/session/{sessionId}/conversation/{chatbotConversation}/messages
+       name: conversion.store.message
+       action: ChatbotApplicationController@storeMessage
+
+  POST .../messages/append
+       name: conversion.store.message.append
+
+10.3 Livewire Routes
+--------------------
+None for AI Bot Enquiries.
+Listing is Blade forms; Messages UI is Alpine.js.
+
+10.4 Menu Route Reference
+-------------------------
+MenuService key ext_chatbot_enquiries
+route: dashboard.chatbot.enquiries.index
+show_condition: Route::has('dashboard.chatbot.enquiries.index')
+active_condition: dashboard.chatbot.enquiries.*
+
+10.5 Extension Provider Registration Chain
+------------------------------------------
+The enquiry feature is part of the Chatbot extension. Boot sequence:
+
+  config/app.php
+       |
+       v
+  MarketplaceServiceProvider (registered in application bootstrap)
+       |
+       v
+  MarketplaceServiceProvider::$extensionProviders['chatbot']
+       |
+       v
+  App\Extensions\Chatbot\System\ChatbotServiceProvider::boot()
+       |
+       +-- registerRoutes()  -> enquiries routes under web+auth
+       +-- registerMigrations() -> ext_chatbot_enquiries migrations
+       +-- registerViews() -> view namespace chatbot::
+
+If php artisan route:list does not show enquiry routes, verify:
+  - Chatbot extension is installed/enabled via marketplace
+  - Extension ChatbotServiceProvider is registered (not only
+    app/Providers/ChatbotServiceProvider.php which is a different class)
+
+10.6 Open Conversation Deep-Link Flow
+-------------------------------------
+Listing "Open Conversation" and analytics "View Conversation" link to:
+
+  GET dashboard/chatbot?conversation_id={id}
+  route name: dashboard.chatbot.index
+
+Frontend (chats-history.blade.php Alpine component):
+  1) init() reads conversation_id from window.location.search
+  2) fetchChats() calls conversationsWithPaginate API with conversation_id
+  3) ChatbotService::conversationsWithPaginate() applies:
+       ->when(request('conversation_id'), fn ($q) => $q->whereKey(...))
+  4) After fetch, if targetConversationId set:
+       activeChat = matching chat from chatsList
+       setOpen(true) opens Messages drawer on that conversation
+  5) Contact Info tab shows Extracted Enquiry card from activeChat.enquiry
+
+================================================================================
+11. BLADE / UI (NOTE: NOT LIVEWIRE)
+================================================================================
+
+Clarification:
+  This feature does not use Livewire components for Enquiries.
+  UI stack = Blade + Laravel forms + Alpine.js (Messages drawer).
+
+11.1 Sidebar
+------------
+Source: MenuService definition + menus DB row (migration)
+Label : AI Bot Enquiries
+Icon  : tabler-clipboard-list
+Order : 5
+Opens : dashboard.chatbot.enquiries.index
+
+11.2 Dashboard Home
+-------------------
+File: resources/views/index.blade.php (chatbot extension)
+Includes:
+  chatbot::home.actions-grid
+  chatbot::home.enquiry-analytics
+
+actions-grid.blade.php
+  Card "AI Bot Enquiries" showing $totalEnquiriesCount
+  Button linking to enquiries.index
+
+enquiry-analytics.blade.php
+  Stat cards: Total / New / Contacted / Qualified / Closed
+  Latest enquiries table
+  Button View All Enquiries
+  Empty state when none
+
+11.3 Listing Page
+-----------------
+File: resources/views/enquiry/index.blade.php
+Extends: panel.layout.app
+
+Features:
+  Breadcrumb: AI Chat Bots / AI Bot Enquiries
+  Total Enquiries KPI (scoped total, not filtered)
+  Filters (GET form):
+    search, status, interest, lead_score, start_date, end_date, sort
+  Table columns include customer, email, phone, company, interest,
+    lead score, status select, notes textarea, conversation_id, created_at
+  Actions:
+    Save (PATCH via form id enquiry-update-{id})
+    Open Conversation (link to dashboard.chatbot.index?conversation_id=)
+    Delete (DELETE form + JS confirm())
+  Pagination: $items->links()
+  Empty states for zero total vs no filter matches
+
+11.4 Messages / Conversation UI — Extracted Enquiry
+---------------------------------------------------
+File: .../chats-history/particles/contact-info-tab-details.blade.php
+Card title: Extracted Enquiry
+Alpine bindings on activeChat.enquiry.*
+Fields: visitor_name, email, phone, company, interest, lead_score, status, created_at
+Empty state when activeChat && !activeChat.enquiry
+
+Helpers in chats-history.blade.php Alpine component:
+  getEnquiryLeadScore()
+  getEnquiryLeadScoreBadgeClass()
+  getEnquiryStatusBadgeClass()
+  getEnquiryStatusLabel()
+  formatEnquiryDate()
+
+Data source: ChatbotConversationResource enquiry key from eager-loaded HasOne.
+
+11.5 Blades Modified / Created Summary
+--------------------------------------
+CREATED:
+  enquiry/index.blade.php
+  home/enquiry-analytics.blade.php
+
+MODIFIED:
+  index.blade.php (include analytics)
+  home/actions-grid.blade.php
+  home/chats-history/chats-history.blade.php
+  home/chats-history/particles/contact-info-tab-details.blade.php
+
+================================================================================
+12. CODE FLOW DIAGRAMS
+================================================================================
+
+12.1 Detection Happy Path
+-------------------------
+
+Message (role=user)
+        |
+        v
+ChatbotHistory::create
+        |
+        v
+booted created hook
+        |
+        v
+detectAndStoreEnquiry
+        |
+        v
+EnquiryDetectorService::detect
+        |
+        +--> score < 50 -----> stop (no write)
+        |
+        +--> score >= 50
+                |
+                v
+          Duplicate?
+           /        \
+         yes         no
+          |           |
+     skip/reset    enquiries()->create
+                      |
+                      v
+                 ext_chatbot_enquiries
+
+12.2 Admin Listing Flow
+-----------------------
+
+Sidebar click AI Bot Enquiries
+        |
+        v
+GET enquiries.index
+        |
+        v
+ChatbotEnquiryController::index
+        |
+        v
+Scope by owned chatbot_ids
+        |
+        v
+Filter / sort / paginate
+        |
+        v
+enquiry/index.blade.php
+
+12.3 Update Status / Notes Flow
+-------------------------------
+
+Admin edits status/notes
+        |
+        v
+PATCH enquiries.update
+        |
+        v
+Ownership firstOrFail
+        |
+        v
+validate status + notes
+        |
+        v
+enquiry->update
+        |
+        v
+Redirect + flash success
+
+12.4 Delete Flow
+----------------
+
+Admin clicks trash
+        |
+        v
+confirm() dialog
+        |
+        v
+DELETE enquiries.destroy
+        |
+        v
+Ownership firstOrFail
+        |
+        v
+enquiry->delete  (row only)
+        |
+        v
+Redirect + flash
+
+12.5 Messages UI Display Flow
+-----------------------------
+
+Open Messages drawer
+        |
+        v
+ChatbotService loads conversations with enquiry
+        |
+        v
+ChatbotConversationResource serializes enquiry
+        |
+        v
+Alpine activeChat.enquiry
+        |
+        v
+Extracted Enquiry card
+
+================================================================================
+13. SEQUENCE DIAGRAM
+================================================================================
+
+User/Visitor          Widget              API Controller           ChatbotHistory
+     |                   |                      |                        |
+     |-- types msg ----->|                      |                        |
+     |                   |-- POST messages ---->|                        |
+     |                   |                      |-- insertMessage ------>|
+     |                   |                      |   History::create      |
+     |                   |                      |                        |
+     |                   |                      |        created hook    |
+     |                   |                      |             |          |
+     |                   |                      |             v          |
+     |                   |                      |      detectAndStore    |
+     |                   |                      |             |          |
+     |                   |                      |             v          |
+     |                   |                      |   EnquiryDetectorSvc   |
+     |                   |                      |             |          |
+     |                   |                      |             v          |
+     |                   |                      |      Database INSERT   |
+     |                   |                      |   ext_chatbot_enquiries|
+     |                   |                      |                        |
+     |                   |<-- AI response ------|                        |
+     |<-- display -------|                      |                        |
+
+Admin                 Browser               EnquiryController         Database
+  |                      |                         |                     |
+  |-- open Enquiries --->|                         |                     |
+  |                      |-- GET index ----------->|                     |
+  |                      |                         |-- SELECT scoped --->|
+  |                      |<-- Blade table ---------|                     |
+  |-- change status ---->|                         |                     |
+  |                      |-- PATCH update -------->|-- UPDATE ---------->|
+  |                      |<-- redirect+flash ------|                     |
+  |-- delete ----------->|                         |                     |
+  |                      |-- DELETE destroy ------>|-- DELETE ---------->|
+  |                      |<-- redirect+flash ------|                     |
+
+Dashboard Admin       ChatbotController
+  |                         |
+  |-- GET dashboard.chatbot |
+  |                         |-- count/group/latest enquiries
+  |                         |-- render actions-grid + enquiry-analytics
+
+================================================================================
+14. CRUD FLOW
+================================================================================
+
+14.1 CREATE Enquiry
+-------------------
+Triggered automatically — there is no admin "Create Enquiry" form.
+
+Path:
+  User message -> ChatbotHistory create -> detectAndStoreEnquiry
+  -> EnquiryDetectorService -> (if qualifying + not duplicate)
+  -> $conversation->enquiries()->create([...])
+
+Default fields on create:
+  status = 'new' (DB default)
+  notes  = null
+  lead_score from detector
+  FKs from conversation
+
+14.2 READ Enquiry
+-----------------
+A) Listing: ChatbotEnquiryController::index
+B) Dashboard latest: ChatbotController::index limit 10
+C) Messages card: HasOne enquiry via ChatbotConversationResource
+D) Filters/search on listing (see controller)
+
+14.3 UPDATE Enquiry
+-------------------
+Only status + notes via PATCH ChatbotEnquiryController::update
+Detection path does not update existing rows.
+
+14.4 DELETE Enquiry
+-------------------
+DELETE ChatbotEnquiryController::destroy
+Deletes enquiry row only.
+Conversation and histories remain.
+A future qualifying user message can create a new enquiry again
+(because deleted row no longer matches duplicate check).
+
+14.5 View Conversation
+----------------------
+Listing "Open Conversation" button:
+  route('dashboard.chatbot.index', ['conversation_id' => $entry->conversation_id])
+
+Opens AI Chat Bots home with conversation deep-link query param.
+
+Backend filter:
+  ChatbotController::conversationsWithPaginate()
+    -> ChatbotService::conversationsWithPaginate()
+    -> whereKey((int) request('conversation_id')) when numeric
+
+Frontend handler:
+  chats-history.blade.php init():
+    targetConversationId = URLSearchParams conversation_id
+    fetchChats includes conversation_id in API request
+    after load: activeChat = match; setOpen(true)
+
+Extracted Enquiry card reads activeChat.enquiry from HasOne relation
+(see Section 15.5 for multi-enquiry UI limitation).
+
+14.6 Duplicate Prevention (CRUD context)
+----------------------------------------
+Create path skips insert when same conversation already has
+matching email+phone+interest (null-safe).
+
+================================================================================
+15. MULTIPLE ENQUIRY LOGIC
+================================================================================
+
+15.1 Schema Allows Many Rows Per Conversation
+---------------------------------------------
+No unique on conversation_id.
+
+15.2 Application Logic
+----------------------
+
+One Conversation
+       |
+       +--> Enquiry #1 (first qualifying lead combo)
+       |
+       +--> (same combo again) --> IGNORE (duplicate)
+       |
+       +--> Enquiry #2 (different email/phone/interest combo)
+       |
+       +--> Enquiry #N ...
+
+15.3 How New Enquiries Are Identified
+-------------------------------------
+1. Load user histories since latest enquiry created_at (inclusive window)
+2. Grow candidateHistories message-by-message
+3. Run detector on concatenated candidate text
+4. When is_enquiry true:
+     Compare lead {email, phone, interest} to existing enquiries on conversation
+5. If not duplicate -> create new row and return
+6. If duplicate -> clear candidate window and continue scanning later messages
+
+15.4 Why Candidate Window Resets On Duplicate
+---------------------------------------------
+Prevents the growing window from remaining "stuck" on an already-saved lead
+while still allowing later distinct lead combinations to accumulate fresh
+context from subsequent messages.
+
+15.5 Messages UI Implication
+----------------------------
+Messages "Extracted Enquiry" uses HasOne enquiry().
+Laravel HasOne does not automatically mean "latest".
+Listing page shows ALL enquiries (HasMany reality).
+Developers should be aware: drawer may not list every enquiry row for a
+conversation — only the HasOne-loaded relation.
+
+15.6 Historical Note (From Commit History)
+------------------------------------------
+Earlier implementations used updateOrCreate on conversation_id
+(one enquiry per conversation). Current code (commit "multiple enquiries
+in single chat") uses enquiries()->create() with duplicate checks.
+
+================================================================================
+16. FILE MODIFICATION SUMMARY
+================================================================================
+
+File                                                              | Created/Modified | Purpose / Reason                                      | Methods / Areas Changed
+----------------------------------------------------------------- | ---------------- | ----------------------------------------------------- | ------------------------------------------
+.../Models/ChatbotEnquiry.php                                     | Created          | Enquiry Eloquent model                               | model + relations
+.../Http/Controllers/ChatbotEnquiryController.php                 | Created          | Admin list/update/delete                             | index, update, destroy
+.../Services/Enquiry/EnquiryDetectorService.php                   | Created          | Orchestrate detection                                | detect, helpers
+.../Services/Enquiry/EmailDetector.php                            | Created          | Email regex                                          | detect
+.../Services/Enquiry/PhoneDetector.php                            | Created          | Phone regex + normalize                              | detect, normalizePhone
+.../Services/Enquiry/CompanyDetector.php                          | Created          | Company regex                                        | detect, cleanCompanyName
+.../Services/Enquiry/InterestDetector.php                         | Created          | Interest keywords                                    | detect, countMatches, containsKeyword
+.../Services/Enquiry/LeadScorer.php                               | Created          | Weighted scoring                                     | score
+.../migrations/2026_07_15_000000_create_ext_chatbot_enquiries...  | Created          | Table schema                                         | up/down
+.../migrations/2026_07_15_000001_add_notes_...                    | Created          | notes column                                         | up/down
+.../migrations/2026_07_15_000002_add_ext_chatbot_enquiries_menu   | Created          | menus row + regenerate                               | up/down
+.../resources/views/enquiry/index.blade.php                       | Created          | Listing UI                                           | full page
+.../resources/views/home/enquiry-analytics.blade.php              | Created          | Dashboard analytics                                  | partial
+.../Models/ChatbotHistory.php                                     | Modified         | Auto-detect on create                                | booted, detectAndStoreEnquiry
+.../Models/ChatbotConversation.php                                | Modified         | enquiry HasOne + enquiries HasMany                   | enquiry(), enquiries()
+.../Models/ChatbotCustomer.php                                    | Modified         | customer -> enquiries                                | enquiries()
+.../ChatbotServiceProvider.php                                    | Modified         | Register enquiry routes                              | router group
+.../Http/Controllers/ChatbotController.php                        | Modified         | Dashboard enquiry stats                              | index()
+.../Services/ChatbotService.php                                   | Modified         | Eager load enquiry                                   | conversationEagerLoads()
+.../Http/Resources/Admin/ChatbotConversationResource.php          | Modified         | JSON enquiry payload                                 | toArray()
+app/Services/Common/MenuService.php                               | Modified         | Sidebar item                                         | ext_chatbot_enquiries + orderBy id
+.../resources/views/index.blade.php                               | Modified         | Include analytics                                    | @include
+.../resources/views/home/actions-grid.blade.php                   | Modified         | Enquiries shortcut card                              | card markup
+.../resources/views/home/chats-history/chats-history.blade.php    | Modified         | Alpine enquiry helpers                               | JS helpers
+.../particles/contact-info-tab-details.blade.php                  | Modified         | Extracted Enquiry card                               | Alpine card
+.../Api/ChatbotApplicationController.php                          | Existing path    | Creates histories that trigger detection             | storeMessage/insertMessage (unchanged for write)
+app/Domains/Marketplace/MarketplaceServiceProvider.php            | Existing         | Registers extension ChatbotServiceProvider           | $extensionProviders['chatbot']
+app/Providers/ChatbotServiceProvider.php                        | Existing         | Core embed/API routes (NOT enquiries)                | separate from extension provider
+
+================================================================================
+17. DATABASE QUERY FLOW
+================================================================================
+
+17.1 INSERT (Detection Create)
+------------------------------
+Triggered by:
+  $conversation->enquiries()->create([...])
+
+Effective SQL shape:
+  INSERT INTO ext_chatbot_enquiries
+    (chatbot_id, conversation_id, chatbot_customer_id, email, phone, company,
+     interest, lead_score, status, notes, created_at, updated_at)
+  VALUES (... status default 'new', notes null ...)
+
+17.2 SELECT — Listing
+---------------------
+Base:
+  SELECT * FROM ext_chatbot_enquiries WHERE chatbot_id IN (...)
+
+Optional:
+  LIKE search on email/phone/company/interest
+  OR WHERE EXISTS customer.name LIKE
+  WHERE status = ?
+  WHERE interest = ?
+  WHERE lead_score BETWEEN ? AND ?
+  WHERE DATE(created_at) >= / <=
+  ORDER BY created_at/id or lead_score
+  LIMIT/OFFSET pagination
+
+Distinct interests:
+  SELECT DISTINCT interest WHERE interest IS NOT NULL AND interest != ''
+
+17.3 SELECT — Dashboard Analytics
+---------------------------------
+COUNT(*) scoped
+SELECT LOWER(COALESCE(status,'new')) as status, COUNT(*) ... GROUP BY status
+SELECT ... ORDER BY created_at DESC LIMIT 10 with customer relation
+
+17.4 SELECT — Detection Window
+------------------------------
+SELECT latest enquiry for conversation ORDER BY id DESC LIMIT 1
+SELECT histories WHERE role=user [AND created_at >= latest.created_at] ORDER BY id
+SELECT EXISTS duplicate enquiry matching email/phone/interest null-safe
+
+17.5 UPDATE
+-----------
+UPDATE ext_chatbot_enquiries SET status=?, notes=?, updated_at=?
+WHERE id=? AND chatbot_id IN (owned ids)  (ownership applied in PHP query)
+
+17.6 DELETE
+-----------
+DELETE FROM ext_chatbot_enquiries WHERE id=? (after ownership query)
+
+17.7 Relationship Queries
+-------------------------
+BelongsTo loads for customer on listing
+HasOne enquiry on conversations for Messages
+HasMany enquiries during detection
+
+================================================================================
+18. SECURITY
+================================================================================
+
+18.1 Authorization
+------------------
+- Dashboard routes behind middleware web + auth
+- No dedicated ChatbotEnquiryPolicy class found
+- Ownership enforced by:
+    whereIn('chatbot_id', auth()->user()->externalChatbots()->pluck('id'))
+  on index/update/destroy
+- update/destroy re-fetch with ownership or firstOrFail (404/ModelNotFound)
+
+18.2 Validation
+---------------
+update():
+  status required + Rule::in(new,contacted,qualified,closed)
+  notes nullable string max 5000
+index filters:
+  allow-list checks rather than hard validation errors
+
+18.3 Mass Assignment
+--------------------
+ChatbotEnquiry $fillable explicitly lists allowed columns.
+Detection create only passes intended fields.
+Admin update only passes validated status/notes.
+
+18.4 SQL Injection Prevention
+-----------------------------
+Eloquent parameter binding used throughout.
+Search uses where('col', 'like', "%{$search}%") with bound values via query builder
+(standard Laravel binding — not raw interpolated SQL for values).
+
+18.5 Duplicate Prevention
+-------------------------
+Application-level only; race conditions possible under concurrent writes
+(no DB unique constraint). Acceptable for current sync request model.
+
+18.6 CSRF
+---------
+PATCH/DELETE forms include @csrf (and @method spoofing).
+
+18.7 API Message Path
+---------------------
+Public chatbot API creates histories; detection inherits that trust boundary.
+Enquiry rows always copy chatbot_id from conversation (cannot spoof another bot
+via detection payload because there is no public enquiry write API).
+
+================================================================================
+19. ERROR HANDLING
+================================================================================
+
+19.1 Detection Errors
+---------------------
+detectAndStoreEnquiry wraps logic in try/catch (Throwable).
+On failure:
+  Log::warning('Chatbot enquiry detection failed.', [
+    chatbot_history_id, conversation_id, message
+  ])
+Does not rethrow — visitor chat continues.
+
+19.2 Null Checks
+----------------
+- role must be user
+- conversation_id required
+- conversation model must exist
+- empty detector fields become null via ?: null
+- duplicate uses whereNull for null fields
+
+19.3 Validation Errors (Admin Update)
+-------------------------------------
+Laravel validation exceptions redirect back with errors (standard framework).
+
+19.4 Ownership Miss
+-------------------
+firstOrFail() raises ModelNotFoundException -> 404
+
+19.5 Confirm On Delete
+----------------------
+Browser confirm() before DELETE submit (client-side only; not a server guard).
+
+19.6 Logging
+------------
+Only explicit enquiry logging found: detection failure warning above.
+Successful creates are not specially logged.
+
+================================================================================
+20. TESTING PERFORMED
+================================================================================
+
+The following scenarios were exercised during feature development / local QA
+(as reflected in implementation commits and prior validation work). Documented
+as expected behaviour of the CURRENT code.
+
+Scenario A — Single Enquiry
+  Input : User message with email + interest (or email + phone)
+  Expect: One row in ext_chatbot_enquiries; appears on listing; status new
+  Actual: Matches when score >= 50
+
+Scenario B — Multiple Enquiries Same Conversation
+  Input : Pricing lead, then later Demo lead with different interest/contact combo
+  Expect: Two rows, same conversation_id
+  Actual: Supported by create() + windowing logic
+
+Scenario C — Duplicate Enquiry
+  Input : Same email+phone+interest repeated after first save
+  Expect: No second identical row
+  Actual: duplicate exists() skips create
+
+Scenario D — Incremental Information Across Messages
+  Input : Message1 has email only (score 30 — not saved); Message2 adds phone
+  Expect: Combined candidate window may reach score 60 and create once
+  Actual: Incremental candidateHistories loop supports this within a window
+
+Scenario E — Below Threshold
+  Input : "I need help" (Support interest only = 20)
+  Expect: No enquiry row
+  Actual: is_enquiry false
+
+Scenario F — Delete Enquiry
+  Input : Delete from listing
+  Expect: Row removed; conversation/history remain; flash success
+  Actual: destroy() deletes enquiry only
+
+Scenario G — View Conversation
+  Input : Eye button on listing
+  Expect: Navigates to chatbot index with conversation_id query
+  Actual: route wired as documented
+
+Scenario H — Dashboard Updates
+  Input : New enquiry created
+  Expect: Counts and latest list reflect owned chatbot enquiries
+  Actual: ChatbotController::index recomputes on page load
+
+Scenario I — Messages Extracted Enquiry Card
+  Input : Conversation with at least one enquiry
+  Expect: Alpine card shows enquiry fields when relation loaded
+  Actual: Resource maps HasOne enquiry
+
+Scenario J — Assistant Messages
+  Input : Bot replies (role != user)
+  Expect: No detection persistence from assistant text
+  Actual: Early return on role !== 'user'
+
+================================================================================
+21. COMPLETE CODE WALKTHROUGH
+================================================================================
+
+21.1 ChatbotHistory::booted / detectAndStoreEnquiry
+---------------------------------------------------
+WHY IT EXISTS:
+  Central hook so every history insert path (storeMessage, appendMessage, etc.)
+  automatically participates without duplicating detection calls.
+
+WHO CALLS IT:
+  Eloquent framework on ChatbotHistory::create / query()->create.
+
+WHAT IT RETURNS:
+  void (side effects only).
+
+NEXT IN EXECUTION:
+  EnquiryDetectorService::detect OR early return OR Log::warning.
+
+KEY BRANCHES:
+  1) non-user -> return
+  2) no conversation -> return
+  3) loop candidates -> detect
+  4) not enquiry -> continue
+  5) duplicate -> reset + continue
+  6) create + return
+
+21.2 EnquiryDetectorService::detect
+-----------------------------------
+WHY: Single entry for extracting structured lead data from text sources.
+WHO: detectAndStoreEnquiry via app(EnquiryDetectorService::class)
+RETURNS: associative array with email, phone, company, interest,
+         matched_keyword, lead_score, is_enquiry
+NEXT: Caller decides persistence.
+
+21.3 EmailDetector::detect
+--------------------------
+WHY: Isolate email regex.
+WHO: EnquiryDetectorService
+RETURNS: {email: string|null, found: bool}
+NEXT: PhoneDetector in orchestrator sequence.
+
+21.4 PhoneDetector::detect / normalizePhone
+-------------------------------------------
+WHY: Capture intl/local phones and store digits consistently.
+WHO: EnquiryDetectorService
+RETURNS: {phone, found}
+NEXT: CompanyDetector
+
+21.5 CompanyDetector::detect / cleanCompanyName
+-----------------------------------------------
+WHY: Optional company signal (+10 score).
+WHO: EnquiryDetectorService
+RETURNS: {company, found}
+NEXT: InterestDetector
+
+21.6 InterestDetector::detect / countMatches / containsKeyword
+--------------------------------------------------------------
+WHY: Map commercial intent to labeled interest groups.
+WHO: EnquiryDetectorService
+RETURNS: detect -> {interest, matched_keyword, found}
+         countMatches -> int
+NEXT: LeadScorer
+
+21.7 LeadScorer::score
+----------------------
+WHY: Convert found flags into comparable integer score + threshold gate.
+WHO: EnquiryDetectorService
+RETURNS: {lead_score: int}
+NEXT: is_enquiry boolean computed in orchestrator.
+
+21.8 ChatbotEnquiry model relations
+-----------------------------------
+WHY: Eloquent navigation for UI and scoping.
+WHO: Controllers (with customer), Conversation (hasMany/hasOne), Resource
+RETURNS: Relation objects / related models
+NEXT: View rendering / JSON serialization
+
+21.9 ChatbotEnquiryController::index
+------------------------------------
+WHY: Admin read surface with filters.
+WHO: Route enquiries.index
+RETURNS: View
+NEXT: Blade render
+
+21.10 ChatbotEnquiryController::update
+--------------------------------------
+WHY: Allow pipeline management without editing detection fields.
+WHO: Route enquiries.update (form POST method PATCH)
+RETURNS: RedirectResponse
+NEXT: index page
+
+21.11 ChatbotEnquiryController::destroy
+---------------------------------------
+WHY: Remove false positives / unwanted leads.
+WHO: Route enquiries.destroy
+RETURNS: RedirectResponse
+NEXT: index page
+
+21.12 ChatbotController::index (enquiry portion)
+-----------------------------------------------
+WHY: Surface KPIs on AI Chat Bots home.
+WHO: Route dashboard.chatbot.index
+RETURNS: View with enquiryAnalytics + latestEnquiries
+NEXT: actions-grid + enquiry-analytics blades
+
+21.13 ChatbotService::conversationEagerLoads
+--------------------------------------------
+WHY: Avoid N+1 and ensure enquiry available to Resource.
+WHO: Conversation listing/fetch methods inside ChatbotService
+RETURNS: array of relation names including 'enquiry'
+NEXT: Eloquent eager load -> Resource
+
+21.14 ChatbotConversationResource::toArray (enquiry key)
+-------------------------------------------------------
+WHY: Provide Alpine Messages UI a stable JSON shape.
+WHO: API/admin conversation serialization
+RETURNS: enquiry object or null
+NEXT: Alpine activeChat.enquiry bindings
+
+21.15 ChatbotApplicationController::storeMessage / insertMessage
+----------------------------------------------------------------
+WHY (for feature): Upstream producer of ChatbotHistory rows.
+WHO: Widget POST messages
+RETURNS: ChatbotHistoryResource (+ AI response metadata)
+NEXT: Eloquent created hook (detection)
+
+21.16 MenuService ext_chatbot_enquiries
+---------------------------------------
+WHY: Sidebar discoverability.
+WHO: Menu regenerate / panel layout
+RETURNS: menu tree entry
+NEXT: Browser navigation to listing
+
+================================================================================
+22. DEMONSTRATION GUIDE (FOR TEAM LEAD)
+================================================================================
+
+Goal: Demonstrate end-to-end confidence in 15–20 minutes.
+
+---------------------------------------------------------
+PART A — Setup (2 minutes)
+---------------------------------------------------------
+1. Open terminal; ensure app is served (php artisan serve or existing server).
+2. Confirm logged in as a user who OWNS at least one chatbot
+   (enquiries are scoped by externalChatbots).
+3. Open local test page if available: /chatbot-test
+   (or live site page with embed script pointing at the same APP origin).
+4. Say: "Detection is not a cron job. It runs synchronously when a user
+   ChatbotHistory row is created."
+
+---------------------------------------------------------
+PART B — Show Architecture First (3 minutes)
+---------------------------------------------------------
+Open these files in order and narrate:
+
+  1) ChatbotApplicationController::storeMessage / insertMessage
+     "Visitor message becomes a history row here."
+
+  2) ChatbotHistory::booted + detectAndStoreEnquiry
+     "This is the trigger. Role must be user."
+
+  3) EnquiryDetectorService + LeadScorer
+     "Score must be >= 50. Email 30, Phone 30, Company 10, Interest 20,
+      multi-keyword bonus 10."
+
+  4) Migration create_ext_chatbot_enquiries_table
+     "No unique on conversation_id — multiple enquiries allowed."
+
+  5) ChatbotEnquiryController
+     "Admin surfaces: index / update / destroy with ownership scoping."
+
+---------------------------------------------------------
+PART C — Live Chat Test Messages (5 minutes)
+---------------------------------------------------------
+Use a fresh conversation when possible.
+
+Test Message 1 (should NOT create — score too low):
+  "I need help with something"
+  Expected: interest Support (+20) only -> no row
+
+Test Message 2 (SHOULD create — email + interest = 50):
+  "My email is lead.test@example.com and I want pricing details"
+  Expected: interest Pricing, email found, score >= 50, status new
+
+Show DB (optional):
+  SELECT id, conversation_id, email, phone, interest, lead_score, status
+  FROM ext_chatbot_enquiries ORDER BY id DESC LIMIT 5;
+
+Test Message 3 (duplicate — should NOT create second identical):
+  Repeat the same email + pricing intent in same conversation.
+  Expected: still one matching combo row
+
+Test Message 4 (second distinct enquiry):
+  "Also book a demo please. Reach me at +919876543210"
+  (ensure combination differs — e.g. different interest Demo and/or phone)
+  Expected: second enquiry row same conversation_id
+
+---------------------------------------------------------
+PART D — UI Demonstration (5 minutes)
+---------------------------------------------------------
+1. Sidebar -> AI Bot Enquiries
+   Show total count, filters, pagination.
+
+2. Update status to Contacted, add a note, Save.
+   Flash: Enquiry updated.
+
+3. Click Open Conversation (eye icon).
+   Show Messages drawer; Contact Info -> Extracted Enquiry card.
+
+4. Return to listing; Delete with confirm.
+   Flash: Enquiry deleted successfully.
+   Emphasize: conversation messages remain.
+
+5. Open AI Chat Bots dashboard home:
+   - Actions grid enquiries card count
+   - AI Bot Enquiries Analytics section + latest list
+
+---------------------------------------------------------
+PART E — What To Say About Multi-Enquiry (1 minute)
+---------------------------------------------------------
+"We intentionally moved away from updateOrCreate on conversation_id.
+Now we create new rows and treat email+phone+interest as the duplicate key
+within a conversation. The Messages card still uses HasOne for a single
+summary card."
+
+---------------------------------------------------------
+PART F — Logs To Show
+---------------------------------------------------------
+If you force an error path (optional), show:
+  storage/logs/laravel.log
+  message: "Chatbot enquiry detection failed."
+Otherwise state: successes are silent; failures warn without breaking chat.
+
+---------------------------------------------------------
+PART G — Closing Line
+---------------------------------------------------------
+"End-to-end: Widget POST -> History create -> Model hook -> Detector ->
+Enquiry table -> Dashboard listing/analytics/Messages card."
+
+================================================================================
+23. INTERVIEW QUESTIONS (30) WITH IDEAL ANSWERS
+================================================================================
+
+Q1. Why was a service layer used instead of putting detection in the controller?
+A1. Controllers handle HTTP. Detection is reusable domain logic (regex + scoring)
+    that must run from a model event, not from an admin controller. Services keep
+    SRP and testability.
+
+Q2. Why not put all detection inside ChatbotEnquiryController?
+A2. That controller is for admin CRUD. Detection must run on public chatbot
+    message creation, which never hits EnquiryController.
+
+Q3. Where is the detector called?
+A3. ChatbotHistory::detectAndStoreEnquiry(), invoked from the Eloquent
+    created hook in booted().
+
+Q4. Why use an Eloquent model event instead of calling the detector in
+    ChatbotApplicationController?
+A4. Multiple code paths create histories (storeMessage, appendMessage, others).
+    Hooking create ensures consistent coverage without missing a path.
+
+Q5. Why HasMany enquiries and also HasOne enquiry?
+A5. HasMany supports multiple leads per conversation. HasOne feeds the existing
+    Messages UI which displays a single Extracted Enquiry card.
+
+Q6. How does duplicate prevention work?
+A6. Before create, query conversation enquiries for the same email+phone+interest
+    with null-safe comparisons. If exists, skip create and reset candidate window.
+
+Q7. Why is company not part of the duplicate key?
+A7. Current code only compares email, phone, interest. Company can differ without
+    creating a new identity under this rule.
+
+Q8. How is lead score calculated?
+A8. LeadScorer: email+30, phone+30, company+10, interest+20, +10 if more than one
+    interest keyword match; capped at 100. Threshold 50 in EnquiryDetectorService.
+
+Q9. What happens if detection throws an exception?
+A9. Caught as Throwable; Log::warning; chat flow continues; no enquiry written.
+
+Q10. How is authorization enforced on the listing?
+A10. Auth middleware plus whereIn chatbot_id of the user's externalChatbots.
+     update/destroy re-check ownership with firstOrFail.
+
+Q11. Is there a Policy for ChatbotEnquiry?
+A11. No dedicated Policy class in the implementation; ownership is query-scoped.
+
+Q12. Does delete remove the conversation?
+A12. No. Only the enquiry row is deleted.
+
+Q13. Can a deleted enquiry reappear?
+A13. Yes, if a later user message qualifies again, because the duplicate row
+     no longer exists.
+
+Q14. How are multiple enquiries in one conversation possible?
+A14. No unique DB constraint on conversation_id; create() inserts new rows;
+     windowing after latest enquiry allows new combinations.
+
+Q15. How does incremental detection across messages work?
+A15. candidateHistories grows message by message; detector runs on concatenated
+     user text each time until a non-duplicate enquiry is created.
+
+Q16. Why minimum score 50?
+A16. Prevents weak signals (interest-only=20, email-only=30) from becoming leads.
+     Contact + intent combinations typically meet 50+.
+
+Q17. How is interest detected?
+A17. InterestDetector keyword groups with word-boundary regex; first matching
+     group label wins (Pricing, Sales, Demo, Integration, Support, Callback).
+
+Q18. How is phone normalized?
+A18. PhoneDetector::normalizePhone keeps optional leading +, strips non-digits.
+
+Q19. What middleware protects enquiry admin routes?
+A19. web + auth on the dashboard chatbot route group in ChatbotServiceProvider.
+
+Q20. What is the route name for the listing?
+A20. dashboard.chatbot.enquiries.index
+
+Q21. How does the Messages UI get enquiry data?
+A21. ChatbotService eager-loads enquiry; ChatbotConversationResource maps it to
+     JSON; Alpine reads activeChat.enquiry.
+
+Q22. Is Livewire used for this feature?
+A22. No. Blade forms for listing; Alpine.js for Messages drawer.
+
+Q23. How would you make detection more scalable?
+A23. Queue a job from the created hook; batch process; add caching for repeated
+     texts; move heavy NLP to workers (see Future Improvements).
+
+Q24. Why fillable on ChatbotEnquiry?
+A24. Mass assignment protection; only intended columns can be written via create/update.
+
+Q25. What foreign key deletes cascade?
+A25. Deleting chatbot or conversation cascades to enquiries. Deleting customer
+     nulls chatbot_customer_id.
+
+Q26. How are dashboard analytics computed?
+A26. ChatbotController::index counts and groups statuses for owned chatbot_ids
+     and loads latest 10 with customer.
+
+Q27. What happens to assistant messages?
+A27. History is created, hook runs, early return because role !== 'user'.
+
+Q28. How would you improve duplicate prevention under concurrency?
+A28. Add a unique composite index or use DB transaction with lock; currently
+     application-level exists() check only.
+
+Q29. Why keep detectors as separate classes?
+A29. Single responsibility, easier unit tests, replaceable extractors without
+     touching persistence.
+
+Q30. If asked "how would you improve this feature tomorrow?"
+A30. Queue detection; show all enquiries in Messages UI (HasMany); NER/ML for
+     company/interest; audit log; unique constraints; metrics/alerts on detection
+     failures; export CSV from listing.
+
+================================================================================
+24. FUTURE IMPROVEMENTS
+================================================================================
+
+Realistic improvements grounded in current architecture:
+
+1) Queue Workers
+   Dispatch DetectEnquiryJob from created hook to keep chat latency low.
+
+2) Events / Listeners
+   Emit EnquiryCreated event for CRM webhooks, email notifications, Slack.
+
+3) Batch Processing
+   Nightly re-scan conversations with improved detectors without blocking UX.
+
+4) ML / NER Extraction
+   Replace regex company/interest with NER models; keep LeadScorer interface.
+
+5) Caching
+   Cache detector results per message hash for retries/replays.
+
+6) Performance
+   Index (chatbot_id, created_at), (conversation_id, created_at);
+   avoid loading full history collections for very long chats (window limits).
+
+7) Scalability
+   Horizontal workers; idempotent job keys; unique DB constraints for duplicates.
+
+8) UI Enhancements
+   Show all enquiries in conversation drawer; timeline of leads;
+   bulk status updates; CSV export.
+
+9) Observability
+   Structured success metrics; alert on rising Log::warning rates.
+
+10) Security Hardening
+    Dedicated Policy; rate-limit admin deletes; redact PII in logs.
+
+================================================================================
+25. CONCLUSION
+================================================================================
+
+AI Bot Enquiries turns unstructured chatbot user messages into structured,
+scored, manageable leads inside the existing MagicAI Chatbot Extension.
+
+Architecture in one sentence:
+  User message persistence triggers synchronous detection services that may
+  insert rows into ext_chatbot_enquiries, which are then managed via an
+  authenticated dashboard listing and surfaced on the chatbot home analytics
+  and Messages Extracted Enquiry card.
+
+Implementation pillars that actually exist today:
+  - Table ext_chatbot_enquiries with FK cascades and notes
+  - Model ChatbotEnquiry + relationships on Conversation/Customer/History hook
+  - EnquiryDetectorService and five supporting detector/scorer classes
+  - ChatbotEnquiryController index/update/destroy with ownership scoping
+  - Routes under dashboard.chatbot.enquiries.*
+  - Menu item ext_chatbot_enquiries
+  - Blade listing + analytics + Alpine Extracted Enquiry card
+  - Multi-enquiry create path with email+phone+interest duplicate guard
+  - Fail-soft logging that never breaks the visitor chat path
+
+A new developer should be able to:
+  1) Trace a message from API storeMessage to enquiry insert
+  2) Explain scoring and threshold 50
+  3) Explain multi-enquiry vs Messages HasOne display
+  4) Operate the admin listing (filter, update, delete, open conversation)
+  5) Answer architecture questions without inventing non-existent queues,
+     Livewire components, or updateOrCreate behaviour
+
+End of document.
+
+================================================================================
+APPENDIX A — QUICK REFERENCE CHEAT SHEET
+================================================================================
+
+Minimum score to save          : 50
+Duplicate key                  : conversation + email + phone + interest
+Create mechanism               : conversation->enquiries()->create()
+Trigger                        : ChatbotHistory created (role=user)
+Admin routes                   : enquiries.index|update|destroy
+Table                          : ext_chatbot_enquiries
+Listing view                   : chatbot::enquiry.index
+Analytics view                 : chatbot::home.enquiry-analytics
+Messages card                  : contact-info-tab-details Extracted Enquiry
+Statuses                       : new, contacted, qualified, closed
+Score weights                  : email30 phone30 company10 interest20 bonus10
+
+APPENDIX B — IMPORTANT CLASS LIST
+================================================================================
+App\Extensions\Chatbot\System\Models\ChatbotEnquiry
+App\Extensions\Chatbot\System\Models\ChatbotHistory
+App\Extensions\Chatbot\System\Models\ChatbotConversation
+App\Extensions\Chatbot\System\Models\ChatbotCustomer
+App\Extensions\Chatbot\System\Http\Controllers\ChatbotEnquiryController
+App\Extensions\Chatbot\System\Http\Controllers\ChatbotController
+App\Extensions\Chatbot\System\Http\Controllers\Api\ChatbotApplicationController
+App\Extensions\Chatbot\System\Http\Resources\Admin\ChatbotConversationResource
+App\Extensions\Chatbot\System\Services\Enquiry\EnquiryDetectorService
+App\Extensions\Chatbot\System\Services\Enquiry\EmailDetector
+App\Extensions\Chatbot\System\Services\Enquiry\PhoneDetector
+App\Extensions\Chatbot\System\Services\Enquiry\CompanyDetector
+App\Extensions\Chatbot\System\Services\Enquiry\InterestDetector
+App\Extensions\Chatbot\System\Services\Enquiry\LeadScorer
+App\Extensions\Chatbot\System\Services\ChatbotService
+App\Extensions\Chatbot\System\ChatbotServiceProvider
+App\Domains\Marketplace\MarketplaceServiceProvider
+App\Services\Common\MenuService
+
+APPENDIX C — EXAMPLE DETECTOR RETURN SHAPE
+================================================================================
+[
+  'email'           => 'lead.test@example.com',
+  'phone'           => '+919876543210',
+  'company'         => 'Acme Pvt Ltd',
+  'interest'        => 'Pricing',
+  'matched_keyword' => 'pricing',
+  'lead_score'      => 90,
+  'is_enquiry'      => true,
+]
+
+APPENDIX D — EXAMPLE CREATE PAYLOAD FROM HISTORY HOOK
+================================================================================
+[
+  'chatbot_id'          => <conversation.chatbot_id>,
+  'chatbot_customer_id' => <conversation.chatbot_customer_id>,
+  'email'               => <string|null>,
+  'phone'               => <string|null>,
+  'company'             => <string|null>,
+  'interest'            => <string|null>,
+  'lead_score'          => <int>,
+]
+// conversation_id set by relation create()
+// status default 'new'
+// notes default null
+
+================================================================================
+DOCUMENT END
+================================================================================

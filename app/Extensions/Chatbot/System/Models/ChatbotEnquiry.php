@@ -13,6 +13,7 @@ class ChatbotEnquiry extends Model
         'chatbot_id',
         'conversation_id',
         'chatbot_customer_id',
+        'visitor_name',
         'email',
         'phone',
         'company',

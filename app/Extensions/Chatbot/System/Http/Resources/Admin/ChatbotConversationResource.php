@@ -33,7 +33,7 @@ class ChatbotConversationResource extends JsonResource
                 'read_at' => now(),
             ],
             'enquiry'            => $enquiry ? [
-                'visitor_name'    => $customer?->name,
+                'visitor_name'    => $enquiry->getAttribute('visitor_name') ?: $customer?->name,
                 'email'           => $enquiry->getAttribute('email') ?: $customer?->email,
                 'phone'           => $enquiry->getAttribute('phone') ?: $customer?->phone,
                 'company'         => $enquiry->getAttribute('company'),
