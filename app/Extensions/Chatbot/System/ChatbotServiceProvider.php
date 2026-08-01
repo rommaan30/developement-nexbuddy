@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Extensions\Chatbot\System;
 
 use App\Domains\Marketplace\Contracts\ExtensionRegisterKeyProviderInterface;
+use App\Extensions\Chatbot\System\Events\EnquiryCreated;
 use App\Extensions\Chatbot\System\Http\Controllers\Api\ChatbotApplicationController;
 use App\Extensions\Chatbot\System\Http\Controllers\Api\ChatbotFrameController;
 use App\Extensions\Chatbot\System\Http\Controllers\AvatarController;
@@ -15,11 +16,15 @@ use App\Extensions\Chatbot\System\Http\Controllers\ChatbotCustomerController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotEnquiryController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotKnowledgeBaseArticleController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotMultiChannelController;
+use App\Extensions\Chatbot\System\Http\Controllers\ChatbotNotificationRecipientController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotTrainController;
 use App\Extensions\Chatbot\System\Http\Middleware\LanguageMiddleware;
+use App\Extensions\Chatbot\System\Listeners\SendEnquiryNotification;
 use App\Extensions\Chatbot\System\Models\Chatbot;
 use App\Extensions\Chatbot\System\Models\ChatbotCannedResponse;
+use App\Extensions\Chatbot\System\Models\ChatbotEnquiry;
 use App\Extensions\Chatbot\System\Models\ChatbotKnowledgeBaseArticle;
+use App\Extensions\Chatbot\System\Observers\ChatbotEnquiryObserver;
 use App\Extensions\Chatbot\System\Policies\ChatbotCannedResponsePolicy;
 use App\Extensions\Chatbot\System\Policies\ChatbotKnowledgeBaseArticlePolicy;
 use App\Extensions\Chatbot\System\Policies\ChatbotPolicy;
@@ -27,6 +32,7 @@ use App\Helpers\Classes\Helper;
 use App\Http\Middleware\CheckTemplateTypeAndPlan;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -46,8 +52,18 @@ class ChatbotServiceProvider extends ServiceProvider implements ExtensionRegiste
             ->registerMigrations()
             ->publishAssets()
             ->registerPolicies()
+            ->registerEnquiryNotifications()
             ->registerCommand();
 
+    }
+
+    public function registerEnquiryNotifications(): self
+    {
+        ChatbotEnquiry::observe(ChatbotEnquiryObserver::class);
+
+        Event::listen(EnquiryCreated::class, SendEnquiryNotification::class);
+
+        return $this;
     }
 
     public function registerPolicies(): self
@@ -227,6 +243,19 @@ class ChatbotServiceProvider extends ServiceProvider implements ExtensionRegiste
                     });
                 $route->post('dashboard/chatbot/avatar/upload', AvatarController::class)
                     ->name('dashboard.chatbot.upload.avatar');
+            })
+
+            ->group([
+                'middleware' => ['web', 'auth', 'admin'],
+                'prefix'     => 'dashboard/admin/notification-management',
+                'as'         => 'dashboard.admin.notification-management.',
+            ], function (Router $router) {
+                $router->patch(
+                    'recipient/{notification_recipient}/toggle',
+                    [ChatbotNotificationRecipientController::class, 'toggle']
+                )->name('recipient.toggle');
+                $router->resource('recipient', ChatbotNotificationRecipientController::class)
+                    ->parameters(['recipient' => 'notification_recipient']);
             });
 
         return $this;

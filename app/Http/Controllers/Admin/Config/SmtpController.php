@@ -9,6 +9,7 @@ use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class SmtpController extends Controller
@@ -31,15 +32,35 @@ class SmtpController extends Controller
             return back()->with(['message' => __('This feature is disabled in Demo version.'), 'type' => 'error']);
         }
 
-        $this->settings->update([
-            'smtp_host'        => $request->get('smtp_host'),
-            'smtp_port'        => $request->get('smtp_port'),
-            'smtp_username'    => $request->get('smtp_username'),
-            'smtp_password'    => $request->get('smtp_password'),
-            'smtp_email'       => $request->get('smtp_email'),
-            'smtp_sender_name' => $request->get('smtp_sender_name'),
-            'smtp_encryption'  => $request->get('smtp_encryption'),
+        $data = $request->validate([
+            'smtp_host'        => ['nullable', 'string', 'max:255'],
+            // A host is useless without a port and a sender, so those become
+            // mandatory as soon as the admin starts configuring SMTP.
+            'smtp_port'        => ['nullable', 'required_with:smtp_host', 'integer', 'between:1,65535'],
+            'smtp_username'    => ['nullable', 'string', 'max:255'],
+            'smtp_password'    => ['nullable', 'string', 'max:255'],
+            'smtp_email'       => ['nullable', 'required_with:smtp_host', 'email:rfc', 'max:255'],
+            'smtp_sender_name' => ['nullable', 'string', 'max:255'],
+            'smtp_encryption'  => ['nullable', 'string', Rule::in(['tls', 'ssl', 'TLS', 'SSL'])],
+        ], [
+            'smtp_port.required_with'  => __('SMTP Port is required when a host is set.'),
+            'smtp_email.required_with' => __('SMTP Sender Email is required when a host is set.'),
+            'smtp_encryption.in'       => __('SMTP Encryption must be tls or ssl.'),
         ]);
+
+        // Laravel matches the encryption value case sensitively when choosing
+        // the smtps scheme, so store it normalised.
+        $data['smtp_encryption'] = filled($data['smtp_encryption'] ?? null)
+            ? strtolower($data['smtp_encryption'])
+            : null;
+
+        // A blank password means "leave it unchanged" rather than "erase the
+        // working credentials".
+        if (blank($data['smtp_password'] ?? null)) {
+            unset($data['smtp_password']);
+        }
+
+        $this->settings->update($data);
 
         Setting::forgetCache();
 

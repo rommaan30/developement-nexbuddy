@@ -125,15 +125,25 @@ class AppServiceProvider extends ServiceProvider
 
     protected function setMailConfig($setting): void
     {
-        $this->app['config']->set('mail.mailers.smtp.transport', config('mail.default', 'smtp'));
-        $this->app['config']->set('mail.mailers.smtp.host', $setting->smtp_host ?? config('mail.mailers.smtp.host'));
-        $this->app['config']->set('mail.mailers.smtp.port', (int) ($setting->smtp_port ?? config('mail.mailers.smtp.port')));
-        $this->app['config']->set('mail.mailers.smtp.encryption', ($setting->smtp_encryption ?? config('mail.mailers.smtp.encryption')));
-        $this->app['config']->set('mail.mailers.smtp.username', $setting->smtp_username ?? config('mail.mailers.smtp.username'));
-        $this->app['config']->set('mail.mailers.smtp.password', $setting->smtp_password ?? config('mail.mailers.smtp.password'));
+        // Blank admin fields must fall back to .env. Without this an empty
+        // string from a partially filled SMTP settings form would overwrite a
+        // working .env configuration and silently break all outgoing mail.
+        $fromSetting = static fn (?string $value, $fallback) => filled($value) ? $value : $fallback;
 
-        $this->app['config']->set('mail.from.address', $setting->smtp_email ?? config('mail.from.address'));
-        $this->app['config']->set('mail.from.name', $setting->smtp_sender_name ?? config('mail.from.name'));
+        // Laravel picks the smtps scheme by comparing the encryption value
+        // against a lowercase literal, so legacy "TLS"/"SSL" rows must be
+        // normalised or port 465 silently connects without encryption.
+        $encryption = $fromSetting($setting->smtp_encryption, config('mail.mailers.smtp.encryption'));
+
+        $this->app['config']->set('mail.mailers.smtp.transport', config('mail.default', 'smtp'));
+        $this->app['config']->set('mail.mailers.smtp.host', $fromSetting($setting->smtp_host, config('mail.mailers.smtp.host')));
+        $this->app['config']->set('mail.mailers.smtp.port', (int) $fromSetting($setting->smtp_port, config('mail.mailers.smtp.port')));
+        $this->app['config']->set('mail.mailers.smtp.encryption', is_string($encryption) ? strtolower($encryption) : $encryption);
+        $this->app['config']->set('mail.mailers.smtp.username', $fromSetting($setting->smtp_username, config('mail.mailers.smtp.username')));
+        $this->app['config']->set('mail.mailers.smtp.password', $fromSetting($setting->smtp_password, config('mail.mailers.smtp.password')));
+
+        $this->app['config']->set('mail.from.address', $fromSetting($setting->smtp_email, config('mail.from.address')));
+        $this->app['config']->set('mail.from.name', $fromSetting($setting->smtp_sender_name, config('mail.from.name')));
     }
 
     public function jobRuns(): void

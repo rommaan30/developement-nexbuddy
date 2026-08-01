@@ -51,12 +51,16 @@
                     <div class="col-md-12">
                         <div class="mb-3">
                             <label class="form-label">{{ __('SMTP Password') }}</label>
+                            {{-- Never rendered back to the browser: type="password" only
+                                 masks it on screen, the value stays readable in the page
+                                 source. Submitting it blank keeps the stored password. --}}
                             <input
                                     class="form-control"
                                     id="smtp_password"
                                     type="password"
                                     name="smtp_password"
-                                    value="{{ $setting->smtp_password }}"
+                                    autocomplete="new-password"
+                                    placeholder="{{ filled($setting->smtp_password) ? __('Saved. Leave blank to keep the current password.') : __('Enter SMTP password') }}"
                             >
                         </div>
                     </div>
@@ -82,7 +86,7 @@
                                     id="smtp_sender_name"
                                     type="text"
                                     name="smtp_sender_name"
-                                    value="{{ $setting->smtp_email }}"
+                                    value="{{ $setting->smtp_sender_name }}"
                             >
                         </div>
                     </div>
