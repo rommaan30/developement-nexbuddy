@@ -370,6 +370,25 @@ class MenuService
                 ],
                 'show_condition' => Route::has('dashboard.chatbot.enquiries.index'),
             ],
+            'ext_chatbot_notification_recipients_panel' => [
+                'parent_key'       => null,
+                'key'              => 'ext_chatbot_notification_recipients_panel',
+                'route'            => 'dashboard.chatbot.notification-management.recipient.index',
+                'label'            => 'Notification Management',
+                'icon'             => 'tabler-bell-cog',
+                'svg'              => null,
+                'order'            => 6,
+                'is_active'        => true,
+                'params'           => [],
+                'type'             => 'item',
+                'extension'        => true,
+                'active_condition' => [
+                    'dashboard.chatbot.notification-management.recipient.*',
+                ],
+                // Clients use the chatbot panel URL; Super Admin is redirected
+                // to the admin surface by EnsureNotificationManagementSurface.
+                'show_condition' => Route::has('dashboard.chatbot.notification-management.recipient.index'),
+            ],
             'ext_voice_chatbot' => [
                 'parent_key'       => null,
                 'key'              => 'ext_voice_chatbot',

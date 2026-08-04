@@ -11,22 +11,28 @@ use Illuminate\Support\Collection;
 /**
  * Single source of truth for who receives a notification.
  *
- * Channel agnostic: any future Slack, WhatsApp, SMS, or Teams sender can ask
- * for the active recipients of a notification type through this resolver.
+ * Recipients are always scoped to one chatbot so tenants cannot receive
+ * another chatbot's enquiry mail.
  */
 class NotificationRecipientResolver
 {
     /**
      * @return Collection<int, ChatbotNotificationRecipient>
      */
-    public function active(NotificationTypeEnum $type): Collection
+    public function active(NotificationTypeEnum $type, int $chatbotId): Collection
     {
+        if ($chatbotId < 1) {
+            return new Collection;
+        }
+
         return ChatbotNotificationRecipient::query()
+            ->forChatbot($chatbotId)
             ->active()
             ->ofType($type)
             ->orderBy('id')
             ->get()
             ->filter(static fn (ChatbotNotificationRecipient $recipient): bool => filter_var($recipient->email, FILTER_VALIDATE_EMAIL) !== false)
+            // Deduplicate only within this chatbot's resolved set.
             ->unique('email')
             ->values();
     }

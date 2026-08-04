@@ -5,7 +5,7 @@
     <x-button
         class="mb-4"
         variant="primary"
-        href="{{ route('dashboard.admin.notification-management.recipient.create') }}"
+        href="{{ route($routePrefix . '.recipient.create') }}"
     >
         <x-tabler-plus class="size-4" />
         {{ __('Add Recipient') }}
@@ -25,8 +25,8 @@
             </div>
 
             <form
-                class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
-                action="{{ route('dashboard.admin.notification-management.recipient.index') }}"
+                class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5"
+                action="{{ route($routePrefix . '.recipient.index') }}"
                 method="GET"
             >
                 <x-forms.input
@@ -42,6 +42,24 @@
                             <x-tabler-search class="size-4" />
                         </span>
                     </x-slot:icon>
+                </x-forms.input>
+
+                <x-forms.input
+                    name="chatbot_id"
+                    size="sm"
+                    type="select"
+                >
+                    <option value="">
+                        {{ __('All Chatbots') }}
+                    </option>
+                    @foreach ($chatbots as $chatbot)
+                        <option
+                            value="{{ $chatbot->id }}"
+                            @selected((string) $filters['chatbot_id'] === (string) $chatbot->id)
+                        >
+                            {{ $chatbot->title }}
+                        </option>
+                    @endforeach
                 </x-forms.input>
 
                 <x-forms.input
@@ -93,7 +111,7 @@
 
                     <x-button
                         class="h-9"
-                        href="{{ route('dashboard.admin.notification-management.recipient.index') }}"
+                        href="{{ route($routePrefix . '.recipient.index') }}"
                         variant="outline"
                     >
                         {{ __('Clear') }}
@@ -106,39 +124,23 @@
             <x-table>
                 <x-slot:head>
                     <tr>
-                        <th>
-                            {{ __('Name') }}
-                        </th>
-                        <th>
-                            {{ __('Email') }}
-                        </th>
-                        <th>
-                            {{ __('Notification Type') }}
-                        </th>
-                        <th>
-                            {{ __('Status') }}
-                        </th>
-                        <th>
-                            {{ __('Created') }}
-                        </th>
-                        <th class="text-end">
-                            {{ __('Actions') }}
-                        </th>
+                        <th>{{ __('Name') }}</th>
+                        <th>{{ __('Email') }}</th>
+                        <th>{{ __('Chatbot') }}</th>
+                        <th>{{ __('Notification Type') }}</th>
+                        <th>{{ __('Status') }}</th>
+                        <th>{{ __('Created') }}</th>
+                        <th class="text-end">{{ __('Actions') }}</th>
                     </tr>
                 </x-slot:head>
 
                 <x-slot:body>
                     @foreach ($items as $entry)
                         <tr id="notification-recipient-{{ $entry->id }}">
-                            <td>
-                                {{ $entry->name }}
-                            </td>
-                            <td>
-                                {{ $entry->email }}
-                            </td>
-                            <td>
-                                {{ $entry->notification_type->label() }}
-                            </td>
+                            <td>{{ $entry->name }}</td>
+                            <td>{{ $entry->email }}</td>
+                            <td>{{ $entry->chatbot?->title ?: __('Unknown') }}</td>
+                            <td>{{ $entry->notification_type->label() }}</td>
                             <td>
                                 <x-badge variant="{{ $entry->is_active ? 'success' : 'secondary' }}">
                                     {{ $entry->is_active ? __('Active') : __('Inactive') }}
@@ -158,7 +160,7 @@
                                     size="none"
                                     variant="ghost-shadow"
                                     hover-variant="primary"
-                                    href="{{ route('dashboard.admin.notification-management.recipient.show', $entry->id) }}"
+                                    href="{{ route($routePrefix . '.recipient.show', $entry->id) }}"
                                     title="{{ __('View') }}"
                                 >
                                     <x-tabler-eye class="size-4" />
@@ -169,7 +171,7 @@
                                     size="none"
                                     variant="ghost-shadow"
                                     hover-variant="primary"
-                                    href="{{ route('dashboard.admin.notification-management.recipient.edit', $entry->id) }}"
+                                    href="{{ route($routePrefix . '.recipient.edit', $entry->id) }}"
                                     title="{{ __('Edit') }}"
                                 >
                                     <x-tabler-pencil class="size-4" />
@@ -177,7 +179,7 @@
 
                                 <form
                                     method="POST"
-                                    action="{{ route('dashboard.admin.notification-management.recipient.toggle', array_merge(request()->query(), ['notification_recipient' => $entry->id])) }}"
+                                    action="{{ route($routePrefix . '.recipient.toggle', array_merge(request()->query(), ['notification_recipient' => $entry->id])) }}"
                                     style="display: inline;"
                                 >
                                     @csrf
@@ -200,7 +202,7 @@
 
                                 <form
                                     method="POST"
-                                    action="{{ route('dashboard.admin.notification-management.recipient.destroy', array_merge(request()->query(), ['notification_recipient' => $entry->id])) }}"
+                                    action="{{ route($routePrefix . '.recipient.destroy', array_merge(request()->query(), ['notification_recipient' => $entry->id])) }}"
                                     style="display: inline;"
                                 >
                                     @csrf

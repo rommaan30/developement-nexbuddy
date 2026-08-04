@@ -15,6 +15,32 @@
         <div class="mt-4 space-y-6">
             <div class="flex flex-col gap-2">
                 <x-forms.input
+                    id="chatbot_id"
+                    size="lg"
+                    type="select"
+                    name="chatbot_id"
+                    label="{{ __('Chatbot') }}"
+                    required
+                >
+                    <option value="">
+                        {{ __('Select a chatbot') }}
+                    </option>
+                    @foreach ($chatbots as $chatbot)
+                        <option
+                            value="{{ $chatbot->id }}"
+                            @selected((string) old('chatbot_id', $item->chatbot_id) === (string) $chatbot->id)
+                        >
+                            {{ $chatbot->title }}
+                        </option>
+                    @endforeach
+                </x-forms.input>
+                @error('chatbot_id')
+                    <p class="text-red-500">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <x-forms.input
                     id="name"
                     size="lg"
                     name="name"
@@ -24,9 +50,7 @@
                     required
                 />
                 @error('name')
-                    <p class="text-red-500">
-                        {{ $message }}
-                    </p>
+                    <p class="text-red-500">{{ $message }}</p>
                 @enderror
             </div>
 
@@ -42,9 +66,7 @@
                     required
                 />
                 @error('email')
-                    <p class="text-red-500">
-                        {{ $message }}
-                    </p>
+                    <p class="text-red-500">{{ $message }}</p>
                 @enderror
             </div>
 
@@ -66,9 +88,7 @@
                     @endforeach
                 </x-forms.input>
                 @error('notification_type')
-                    <p class="text-red-500">
-                        {{ $message }}
-                    </p>
+                    <p class="text-red-500">{{ $message }}</p>
                 @enderror
             </div>
 
@@ -92,11 +112,7 @@
                     {{ __('Save') }}
                 </x-button>
             @else
-                <x-button
-                    class="w-full"
-                    size="lg"
-                    type="submit"
-                >
+                <x-button class="w-full" size="lg" type="submit">
                     {{ __('Save') }}
                 </x-button>
             @endif
@@ -105,7 +121,7 @@
                 class="w-full"
                 size="lg"
                 variant="outline"
-                href="{{ route('dashboard.admin.notification-management.recipient.index') }}"
+                href="{{ route($routePrefix . '.recipient.index') }}"
             >
                 {{ __('Cancel') }}
             </x-button>

@@ -18,6 +18,7 @@ use App\Extensions\Chatbot\System\Http\Controllers\ChatbotKnowledgeBaseArticleCo
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotMultiChannelController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotNotificationRecipientController;
 use App\Extensions\Chatbot\System\Http\Controllers\ChatbotTrainController;
+use App\Extensions\Chatbot\System\Http\Middleware\EnsureNotificationManagementSurface;
 use App\Extensions\Chatbot\System\Http\Middleware\LanguageMiddleware;
 use App\Extensions\Chatbot\System\Listeners\SendEnquiryNotification;
 use App\Extensions\Chatbot\System\Models\Chatbot;
@@ -246,19 +247,42 @@ class ChatbotServiceProvider extends ServiceProvider implements ExtensionRegiste
             })
 
             ->group([
-                'middleware' => ['web', 'auth', 'admin'],
+                'middleware' => [
+                    'web',
+                    'auth',
+                    EnsureNotificationManagementSurface::class,
+                    'admin',
+                ],
                 'prefix'     => 'dashboard/admin/notification-management',
                 'as'         => 'dashboard.admin.notification-management.',
             ], function (Router $router) {
-                $router->patch(
-                    'recipient/{notification_recipient}/toggle',
-                    [ChatbotNotificationRecipientController::class, 'toggle']
-                )->name('recipient.toggle');
-                $router->resource('recipient', ChatbotNotificationRecipientController::class)
-                    ->parameters(['recipient' => 'notification_recipient']);
+                $this->registerNotificationRecipientRoutes($router);
+            })
+
+            ->group([
+                'middleware' => [
+                    'web',
+                    'auth',
+                    EnsureNotificationManagementSurface::class,
+                ],
+                'prefix'     => 'dashboard/chatbot/notification-management',
+                'as'         => 'dashboard.chatbot.notification-management.',
+            ], function (Router $router) {
+                $this->registerNotificationRecipientRoutes($router);
             });
 
         return $this;
+    }
+
+    private function registerNotificationRecipientRoutes(Router $router): void
+    {
+        $router->patch(
+            'recipient/{notification_recipient}/toggle',
+            [ChatbotNotificationRecipientController::class, 'toggle']
+        )->name('recipient.toggle');
+
+        $router->resource('recipient', ChatbotNotificationRecipientController::class)
+            ->parameters(['recipient' => 'notification_recipient']);
     }
 
     private function router(): Router|Route

@@ -5,33 +5,10 @@ namespace App\Extensions\Chatbot\System\Services\Enquiry;
 class InterestDetector
 {
     /**
-     * Recognised interest labels mapped to match phrases (longest / most specific first).
-     *
-     * @param  array<string, array<int, string>>  $keywordGroups
+     * @param  array<string, array<int, string>>  $keywordGroups  label => match phrases
      */
     public function __construct(
-        private readonly array $keywordGroups = [
-            'Website Development'        => ['website development', 'web development', 'website', 'web app'],
-            'Mobile App Development'     => ['mobile app development', 'mobile application', 'mobile app', 'android app', 'ios app'],
-            'AI Chatbot'                 => ['ai chatbot', 'ai bot', 'chatbot', 'chat bot'],
-            'Business Automation'        => ['business automation', 'process automation', 'automation'],
-            'Customer Support'           => ['customer support', 'customer service'],
-            'Lead Generation'            => ['lead generation', 'generate leads'],
-            'Enterprise Solution'        => ['enterprise solution', 'enterprise plan', 'enterprise'],
-            'Technical Support'          => ['technical support', 'tech support'],
-            'CRM'                        => ['crm'],
-            'HRMS'                       => ['hrms', 'hr management'],
-            'POS'                        => ['pos system', 'point of sale', 'pos'],
-            'Pricing'                    => ['pricing', 'price', 'quotation', 'quote', 'cost'],
-            'Demo'                       => ['product demo', 'demo', 'trial'],
-            'Consultation'               => ['consultation', 'consulting', 'consultancy'],
-            'Partnership'                => ['partnership', 'partner with', 'reseller'],
-            'Sales'                      => ['buy', 'purchase', 'subscription', 'ecommerce', 'e-commerce', 'ecomm', 'ecom', 'digital marketing'],
-            'Support'                    => ['issue', 'help', 'support'],
-            'Callback'                   => ['call me', 'callback', 'reach me', 'contact me'],
-            'API Integration'            => ['api integration', 'rest api', 'api'],
-            'WhatsApp Integration'       => ['whatsapp integration', 'whatsapp api', 'whatsapp'],
-        ],
+        private readonly array $keywordGroups = [],
         private readonly TextNormalizer $normalizer = new TextNormalizer,
     ) {}
 
@@ -52,13 +29,21 @@ class InterestDetector
         $matchedKeywords = [];
 
         foreach ($this->keywordGroups as $interest => $keywords) {
+            if (! is_array($keywords)) {
+                continue;
+            }
+
             foreach ($keywords as $keyword) {
+                if (! is_string($keyword) || $keyword === '') {
+                    continue;
+                }
+
                 if (! $this->containsKeyword($text, $keyword)) {
                     continue;
                 }
 
                 if (! in_array($interest, $interests, true)) {
-                    $interests[] = $interest;
+                    $interests[] = (string) $interest;
                 }
 
                 if (! in_array($keyword, $matchedKeywords, true)) {
@@ -92,8 +77,12 @@ class InterestDetector
         $count = 0;
 
         foreach ($this->keywordGroups as $keywords) {
+            if (! is_array($keywords)) {
+                continue;
+            }
+
             foreach ($keywords as $keyword) {
-                if ($this->containsKeyword($text, $keyword)) {
+                if (is_string($keyword) && $keyword !== '' && $this->containsKeyword($text, $keyword)) {
                     $count++;
                 }
             }
@@ -107,12 +96,11 @@ class InterestDetector
      */
     public function recognisedLabels(): array
     {
-        return array_keys($this->keywordGroups);
+        return array_map('strval', array_keys($this->keywordGroups));
     }
 
     private function containsKeyword(string $text, string $keyword): bool
     {
-        // Multi-word phrases: allow flexible whitespace.
         $pattern = '/\b' . preg_replace('/\s+/', '\s+', preg_quote($keyword, '/')) . '\b/i';
 
         return preg_match($pattern, $text) === 1;

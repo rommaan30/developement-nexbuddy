@@ -51,7 +51,7 @@ class SendEnquiryNotification implements ShouldQueue
             return false;
         }
 
-        if ($this->recipients()->isNotEmpty()) {
+        if ($this->recipients($event)->isNotEmpty()) {
             return true;
         }
 
@@ -67,7 +67,7 @@ class SendEnquiryNotification implements ShouldQueue
         }
 
         $enquiry = $event->enquiry;
-        $recipients = $this->recipients();
+        $recipients = $this->recipients($event);
 
         if ($recipients->isEmpty()) {
             $this->reportMissingRecipients($enquiry->getKey());
@@ -155,15 +155,18 @@ class SendEnquiryNotification implements ShouldQueue
     }
 
     /**
-     * Recipients are managed by admins in the Notification Management module.
+     * Recipients belong to the enquiry's chatbot only.
      *
      * @return Collection<int, ChatbotNotificationRecipient>
      */
-    private function recipients(): Collection
+    private function recipients(EnquiryCreated $event): Collection
     {
         try {
             return app(NotificationRecipientResolver::class)
-                ->active(NotificationTypeEnum::ai_bot_enquiry);
+                ->active(
+                    NotificationTypeEnum::ai_bot_enquiry,
+                    (int) $event->enquiry->getAttribute('chatbot_id'),
+                );
         } catch (Throwable $exception) {
             Log::error('AI Bot Enquiry notification recipients could not be loaded.', [
                 'message' => $exception->getMessage(),

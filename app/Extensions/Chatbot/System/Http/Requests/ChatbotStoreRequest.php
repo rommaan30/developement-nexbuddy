@@ -4,6 +4,7 @@ namespace App\Extensions\Chatbot\System\Http\Requests;
 
 use App\Domains\Entity\Enums\EntityEnum;
 use App\Extensions\Chatbot\System\Models\ChatbotAvatar;
+use App\Extensions\Chatbot\System\Services\Enquiry\ChatbotInterestDictionary;
 use App\Helpers\Classes\Helper;
 use App\Models\Setting;
 use Illuminate\Foundation\Http\FormRequest;
@@ -23,6 +24,9 @@ class ChatbotStoreRequest extends FormRequest
             'welcome_message'               => ['required', 'string'],
             'interaction_type'              => ['required', 'string'],
             'instructions'                  => Helper::appIsNotDemo() ? ['required', 'string'] : ['sometimes', 'nullable', 'string'],
+            'enquiry_interests'             => ['sometimes', 'nullable', 'array'],
+            'enquiry_interests.*.label'     => ['required_with:enquiry_interests', 'string', 'max:255'],
+            'enquiry_interests.*.keywords'  => ['nullable'],
             'do_not_go_beyond_instructions' => ['required', 'boolean'],
             'suggested_prompts'             => ['sometimes', 'nullable', 'array'],
             'suggested_prompts.*.name'      => ['sometimes', 'nullable', 'string'],
@@ -90,6 +94,9 @@ class ChatbotStoreRequest extends FormRequest
             'suggested_prompts'         => $suggestedPrompts,
             'suggested_prompts_enabled' => (bool) $this->boolean('suggested_prompts_enabled'),
             'trusted_domains'           => $trusted_domains,
+            'enquiry_interests'         => ChatbotInterestDictionary::normalize(
+                $this->input('enquiry_interests', ChatbotInterestDictionary::defaultSoftware())
+            ) ?: ChatbotInterestDictionary::defaultSoftware(),
         ]);
     }
 }

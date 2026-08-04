@@ -168,7 +168,7 @@
                 <code>&lt;head&gt;</code> (or just before <code>&lt;/body&gt;</code>).
             </p>
             <code>
-            <script defer src="http://127.0.0.1:8000/vendor/chatbot/js/external-chatbot.js" data-chatbot-uuid="7d7f66fd-cdac-4d95-bc32-148c0df84d74" data-iframe-width="420" data-iframe-height="745" data-language="en" ></script></code>
+            <script defer src="http://127.0.0.1:8000/vendor/chatbot/js/external-chatbot.js" data-chatbot-uuid="855487c0-1b60-471f-b78d-d3bfc218d139" data-iframe-width="420" data-iframe-height="745" data-language="en" ></script></code>
         </section>
     </main>
 </body>

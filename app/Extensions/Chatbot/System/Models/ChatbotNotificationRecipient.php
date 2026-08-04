@@ -7,12 +7,14 @@ namespace App\Extensions\Chatbot\System\Models;
 use App\Extensions\Chatbot\System\Enums\NotificationTypeEnum;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ChatbotNotificationRecipient extends Model
 {
     protected $table = 'ext_chatbot_notification_recipients';
 
     protected $fillable = [
+        'chatbot_id',
         'name',
         'email',
         'notification_type',
@@ -20,9 +22,15 @@ class ChatbotNotificationRecipient extends Model
     ];
 
     protected $casts = [
+        'chatbot_id'        => 'integer',
         'notification_type' => NotificationTypeEnum::class,
         'is_active'         => 'boolean',
     ];
+
+    public function chatbot(): BelongsTo
+    {
+        return $this->belongsTo(Chatbot::class);
+    }
 
     public function scopeActive(Builder $query): Builder
     {
@@ -32,5 +40,18 @@ class ChatbotNotificationRecipient extends Model
     public function scopeOfType(Builder $query, NotificationTypeEnum $type): Builder
     {
         return $query->where('notification_type', $type->value);
+    }
+
+    public function scopeForChatbot(Builder $query, int $chatbotId): Builder
+    {
+        return $query->where('chatbot_id', $chatbotId);
+    }
+
+    /**
+     * @param  array<int, int|string>  $chatbotIds
+     */
+    public function scopeForChatbots(Builder $query, array $chatbotIds): Builder
+    {
+        return $query->whereIn('chatbot_id', $chatbotIds);
     }
 }

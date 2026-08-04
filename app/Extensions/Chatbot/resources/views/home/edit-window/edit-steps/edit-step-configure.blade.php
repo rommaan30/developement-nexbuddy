@@ -311,6 +311,78 @@
         </div>
 
         <div>
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="m-0 text-sm font-semibold text-heading-foreground">
+                        {{ __('Interest Dictionary') }}
+                    </p>
+                    <p class="mt-1 text-2xs/5 opacity-60">
+                        {{ __('Keywords used to detect visitor interests for AI Bot Enquiries. Each chatbot has its own dictionary.') }}
+                    </p>
+                </div>
+                <x-button
+                    class="shrink-0"
+                    type="button"
+                    size="xs"
+                    variant="success"
+                    @click="addEnquiryInterest()"
+                >
+                    <x-tabler-plus class="size-4" />
+                    {{ __('Add Interest') }}
+                </x-button>
+            </div>
+
+            <div class="space-y-3 rounded-lg border border-border/60 bg-background/60 p-5">
+                <template x-if="!Array.isArray(activeChatbot.enquiry_interests) || activeChatbot.enquiry_interests.length === 0">
+                    <div class="text-muted-foreground rounded-md border border-dashed border-border/60 bg-background p-4 text-2xs/6">
+                        {{ __('No interests configured. Add labels and match keywords for this chatbot.') }}
+                    </div>
+                </template>
+
+                <template
+                    x-for="(interest, index) in activeChatbot.enquiry_interests"
+                    :key="'enquiry-interest-' + index"
+                >
+                    <div class="bg-card grid grid-cols-1 gap-3 rounded-md border border-border/60 p-4 md:grid-cols-[1fr_1.4fr_auto]">
+                        <div>
+                            <x-forms.input
+                                class:label="text-heading-foreground"
+                                label="{{ __('Interest Label') }}"
+                                size="sm"
+                                x-model="interest.label"
+                                x-bind:name="'enquiry_interests[' + index + '][label]'"
+                                placeholder="{{ __('e.g. Cataract') }}"
+                            />
+                        </div>
+                        <div>
+                            <x-forms.input
+                                class:label="text-heading-foreground"
+                                label="{{ __('Match Keywords') }}"
+                                size="sm"
+                                x-model="interest.keywords"
+                                x-bind:name="'enquiry_interests[' + index + '][keywords]'"
+                                placeholder="{{ __('comma separated, e.g. cataract, cataract surgery') }}"
+                            />
+                        </div>
+                        <div class="flex items-end">
+                            <x-button
+                                class="size-9"
+                                type="button"
+                                size="none"
+                                variant="ghost-shadow"
+                                hover-variant="danger"
+                                title="{{ __('Remove') }}"
+                                @click="removeEnquiryInterest(index)"
+                            >
+                                <x-tabler-trash class="size-4" />
+                            </x-button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div>
             <x-forms.input
                 class:label="text-heading-foreground flex-row-reverse justify-between"
                 label="{{ __('Suggested Prompts/Questions') }}"
