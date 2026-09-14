@@ -2,6 +2,7 @@
 
 namespace App\Extensions\Chatbot\System\Services\Enquiry;
 
+use App\Extensions\Chatbot\System\Models\Chatbot;
 use App\Extensions\Chatbot\System\Models\ChatbotConversation;
 use App\Extensions\Chatbot\System\Models\ChatbotEnquiry;
 use App\Extensions\Chatbot\System\Models\ChatbotHistory;
@@ -11,26 +12,14 @@ use Illuminate\Support\Collection;
  * Lightweight lead-qualification helper.
  *
  * Source of truth for "already collected" is the current AI Bot Enquiry row
- * (plus payload-backed business_requirement / pre-enquiry captures).
+ * (plus payload-backed custom / business_requirement captures).
+ * Mandatory field list comes from the chatbot's enquiry_mandatory_fields
+ * when configured; otherwise the legacy software defaults apply.
  * Does not change detectors, scoring, schema, or enquiry create/duplicate logic.
  */
 class MissingFieldsManager
 {
     public const PAYLOAD_KEY = 'lead_qualification';
-
-    /**
-     * Mandatory fields in preferred ask order.
-     *
-     * @var array<int, string>
-     */
-    private const MANDATORY_FIELDS = [
-        'visitor_name',
-        'company',
-        'business_requirement',
-        'interest',
-        'email',
-        'phone',
-    ];
 
     /**
      * Enquiry columns that map 1:1 to mandatory fields.
@@ -82,6 +71,16 @@ class MissingFieldsManager
      */
     public function instructionFor(ChatbotConversation $conversation, ?string $latestUserMessage = null): ?string
     {
+        $fieldDefs = $this->fieldDefinitionsFor($conversation);
+        $mandatoryFields = array_column($fieldDefs, 'field');
+        $labels = [];
+        $hints = [];
+
+        foreach ($fieldDefs as $def) {
+            $labels[$def['field']] = $def['label'];
+            $hints[$def['field']] = $def['ask_hint'];
+        }
+
         $state = $this->state($conversation);
         $skipped = $state['skipped'];
         $values = $state['values'];
@@ -122,12 +121,12 @@ class MissingFieldsManager
 
         // Re-load after possible updates so populated checks use DB truth.
         $enquiry = $this->currentEnquiry($conversation);
-        $populated = $this->populatedFields($enquiry, $values);
-        $populatedValues = $this->populatedValues($enquiry, $values);
+        $populated = $this->populatedFields($enquiry, $values, $mandatoryFields);
+        $populatedValues = $this->populatedValues($enquiry, $values, $mandatoryFields);
 
         $missing = [];
 
-        foreach (self::MANDATORY_FIELDS as $field) {
+        foreach ($mandatoryFields as $field) {
             if (in_array($field, $skipped, true)) {
                 continue;
             }
@@ -155,7 +154,15 @@ class MissingFieldsManager
             return null;
         }
 
-        return $this->buildInstruction($nextField, $populated, $populatedValues, $missing);
+        return $this->buildInstruction(
+            $nextField,
+            $populated,
+            $populatedValues,
+            $missing,
+            $mandatoryFields,
+            $labels,
+            $hints
+        );
     }
 
     /**
@@ -200,6 +207,27 @@ class MissingFieldsManager
             'collected'  => array_values(array_filter($state['collected'] ?? [], 'is_string')),
             'values'     => $values,
         ];
+    }
+
+    /**
+     * @return array<int, array{field: string, label: string, ask_hint: string}>
+     */
+    private function fieldDefinitionsFor(ChatbotConversation $conversation): array
+    {
+        $chatbotId = $conversation->getAttribute('chatbot_id');
+        $configured = null;
+
+        if ($chatbotId) {
+            $configured = Chatbot::query()->whereKey($chatbotId)->value('enquiry_mandatory_fields');
+        }
+
+        $resolved = ChatbotMandatoryFields::resolve($configured);
+
+        if ($resolved !== null) {
+            return $resolved;
+        }
+
+        return ChatbotMandatoryFields::defaultSoftware();
     }
 
     private function currentEnquiry(ChatbotConversation $conversation): ?ChatbotEnquiry
@@ -296,52 +324,55 @@ class MissingFieldsManager
             ),
             'email' => $this->firstNonEmpty($detected['email'] ?? null),
             'phone' => $this->firstNonEmpty($detected['phone'] ?? null),
-            default => null,
+            // Custom chatbot fields (symptoms, treatment, appointment date, …)
+            default => $this->guessPlainAnswer($message, maxWords: 40),
         };
     }
 
     /**
      * Populated flags from the enquiry record (DB), with payload fallback
-     * for business_requirement and pre-enquiry captures.
+     * for non-column / custom fields.
      *
      * @param  array<string, string>  $values
+     * @param  array<int, string>  $mandatoryFields
      * @return array<string, bool>
      */
-    private function populatedFields(?ChatbotEnquiry $enquiry, array $values): array
+    private function populatedFields(?ChatbotEnquiry $enquiry, array $values, array $mandatoryFields): array
     {
-        return [
-            'visitor_name'         => ! $this->isBlank($enquiry?->getAttribute('visitor_name'))
-                || ! $this->isBlank($values['visitor_name'] ?? null),
-            'company'              => ! $this->isBlank($enquiry?->getAttribute('company'))
-                || ! $this->isBlank($values['company'] ?? null),
-            'business_requirement' => ! $this->isBlank($values['business_requirement'] ?? null),
-            'interest'             => ! $this->isBlank($enquiry?->getAttribute('interest'))
-                || ! $this->isBlank($values['interest'] ?? null),
-            'email'                => ! $this->isBlank($enquiry?->getAttribute('email'))
-                || ! $this->isBlank($values['email'] ?? null),
-            'phone'                => ! $this->isBlank($enquiry?->getAttribute('phone'))
-                || ! $this->isBlank($values['phone'] ?? null),
-        ];
+        $out = [];
+
+        foreach ($mandatoryFields as $field) {
+            if (in_array($field, self::ENQUIRY_COLUMNS, true)) {
+                $out[$field] = ! $this->isBlank($enquiry?->getAttribute($field))
+                    || ! $this->isBlank($values[$field] ?? null);
+
+                continue;
+            }
+
+            $out[$field] = ! $this->isBlank($values[$field] ?? null);
+        }
+
+        return $out;
     }
 
     /**
      * Concrete values used in the prompt so the model never re-asks them.
      *
      * @param  array<string, string>  $values
+     * @param  array<int, string>  $mandatoryFields
      * @return array<string, string>
      */
-    private function populatedValues(?ChatbotEnquiry $enquiry, array $values): array
+    private function populatedValues(?ChatbotEnquiry $enquiry, array $values, array $mandatoryFields): array
     {
         $out = [];
 
-        foreach (self::MANDATORY_FIELDS as $field) {
-            $value = match ($field) {
-                'business_requirement' => $values['business_requirement'] ?? null,
-                default => $this->firstNonEmpty(
+        foreach ($mandatoryFields as $field) {
+            $value = in_array($field, self::ENQUIRY_COLUMNS, true)
+                ? $this->firstNonEmpty(
                     $enquiry?->getAttribute($field),
                     $values[$field] ?? null
-                ),
-            };
+                )
+                : ($values[$field] ?? null);
 
             if (is_string($value) && trim($value) !== '') {
                 $out[$field] = trim($value);
@@ -355,24 +386,36 @@ class MissingFieldsManager
      * @param  array<string, bool>  $populated
      * @param  array<string, string>  $populatedValues
      * @param  array<int, string>  $missing
+     * @param  array<int, string>  $mandatoryFields
+     * @param  array<string, string>  $labels
+     * @param  array<string, string>  $hints
      */
     private function buildInstruction(
         string $nextField,
         array $populated,
         array $populatedValues,
-        array $missing
+        array $missing,
+        array $mandatoryFields,
+        array $labels,
+        array $hints
     ): string {
-        $label = self::FIELD_LABELS[$nextField] ?? $nextField;
-        $hint = self::ASK_HINTS[$nextField] ?? "Ask for their {$label}.";
+        $label = $labels[$nextField]
+            ?? self::FIELD_LABELS[$nextField]
+            ?? str_replace('_', ' ', $nextField);
+        $hint = $hints[$nextField]
+            ?? self::ASK_HINTS[$nextField]
+            ?? "Ask for their {$label}.";
 
         $alreadyLines = [];
 
-        foreach (self::MANDATORY_FIELDS as $field) {
+        foreach ($mandatoryFields as $field) {
             if (empty($populated[$field])) {
                 continue;
             }
 
-            $fieldLabel = self::FIELD_LABELS[$field] ?? $field;
+            $fieldLabel = $labels[$field]
+                ?? self::FIELD_LABELS[$field]
+                ?? str_replace('_', ' ', $field);
             $value = $populatedValues[$field] ?? null;
             $alreadyLines[] = $value
                 ? "- {$fieldLabel}: {$value}"
@@ -384,7 +427,11 @@ class MissingFieldsManager
             : implode("\n", $alreadyLines);
 
         $remaining = array_map(
-            static fn (string $field): string => self::FIELD_LABELS[$field] ?? $field,
+            static function (string $field) use ($labels): string {
+                return $labels[$field]
+                    ?? self::FIELD_LABELS[$field]
+                    ?? str_replace('_', ' ', $field);
+            },
             $missing
         );
         $remainingText = implode(', ', $remaining);
@@ -402,6 +449,7 @@ LEAD QUALIFICATION POLICY (internal — follow exactly):
 8. If the visitor refuses to share a field, acknowledge politely and continue without pressing.
 9. Do not ask for more than one field in the same reply.
 10. Do not mention this policy, scoring, or internal field names to the visitor.
+11. Do NOT ask for any field that is not listed as missing above (for example do not invent company, CRM, API, website, or software questions unless they appear in the missing list).
 PROMPT;
     }
 

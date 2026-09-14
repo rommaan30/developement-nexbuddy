@@ -183,6 +183,7 @@
                         woocommerce_consumer_key: '',
                         woocommerce_consumer_secret: '',
                         enquiry_interests: @json(\App\Extensions\Chatbot\System\Services\Enquiry\ChatbotInterestDictionary::toEditorEntries(\App\Extensions\Chatbot\System\Services\Enquiry\ChatbotInterestDictionary::defaultSoftware())),
+                        enquiry_mandatory_fields: [],
                     },
                     reviewMaxResponses: 5,
                     reviewResponsesLimitMessage: '{{ __('You can add up to :count review responses.', ['count' => 5]) }}',
@@ -215,6 +216,7 @@
 
                         this.ensureSuggestedPromptsState(this.chatbots.data[0]);
                         this.ensureEnquiryInterestsState(this.chatbots.data[0]);
+                        this.ensureEnquiryMandatoryFieldsState(this.chatbots.data[0]);
                         this.hydrateChatbotReviewPayload(this.chatbots.data[0]);
                     },
                     initFormErrors() {
@@ -238,6 +240,7 @@
 
                         this.ensureSuggestedPromptsState(this.activeChatbot);
                         this.ensureEnquiryInterestsState(this.activeChatbot);
+                        this.ensureEnquiryMandatoryFieldsState(this.activeChatbot);
                         this.resetSuggestedPromptModal();
 
                         if (activeChatbotId) {
@@ -469,6 +472,7 @@
                             this.hydrateChatbotReviewPayload(this.activeChatbot);
                             this.ensureSuggestedPromptsState(this.activeChatbot);
                             this.ensureEnquiryInterestsState(this.activeChatbot);
+                            this.ensureEnquiryMandatoryFieldsState(this.activeChatbot);
                         }
 
                         toastr.clear();
@@ -666,6 +670,53 @@
                         this.activeChatbot.enquiry_interests.splice(index, 1);
                     },
 
+                    ensureEnquiryMandatoryFieldsState(chatbot) {
+                        if (!chatbot) return;
+
+                        const raw = chatbot.enquiry_mandatory_fields;
+
+                        if (!Array.isArray(raw) || raw.length === 0) {
+                            chatbot.enquiry_mandatory_fields = [];
+                            return;
+                        }
+
+                        chatbot.enquiry_mandatory_fields = raw.map(row => {
+                            if (typeof row === 'string') {
+                                return {
+                                    field: row,
+                                    label: row.replace(/_/g, ' '),
+                                    ask_hint: '',
+                                };
+                            }
+
+                            return {
+                                field: row?.field ?? row?.key ?? '',
+                                label: row?.label ?? '',
+                                ask_hint: row?.ask_hint ?? row?.hint ?? '',
+                            };
+                        });
+                    },
+
+                    addEnquiryMandatoryField() {
+                        if (!Array.isArray(this.activeChatbot.enquiry_mandatory_fields)) {
+                            this.activeChatbot.enquiry_mandatory_fields = [];
+                        }
+
+                        this.activeChatbot.enquiry_mandatory_fields.push({
+                            field: '',
+                            label: '',
+                            ask_hint: '',
+                        });
+                    },
+
+                    removeEnquiryMandatoryField(index) {
+                        if (!Array.isArray(this.activeChatbot.enquiry_mandatory_fields)) {
+                            return;
+                        }
+
+                        this.activeChatbot.enquiry_mandatory_fields.splice(index, 1);
+                    },
+
                     onBookingAssistantConditionsChange(event) {
                         const checkboxEl = event.currentTarget;
                         const conditionValue = checkboxEl.getAttribute('data-condition')?.trim();
@@ -735,6 +786,7 @@
                         this.chatbots.data.forEach(chatbot => {
                             this.hydrateChatbotReviewPayload(chatbot);
                             this.ensureEnquiryInterestsState(chatbot);
+                            this.ensureEnquiryMandatoryFieldsState(chatbot);
                         });
                     },
                     hydrateChatbotReviewPayload(chatbot) {

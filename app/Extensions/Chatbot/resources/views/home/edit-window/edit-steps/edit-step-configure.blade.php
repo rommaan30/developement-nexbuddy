@@ -382,6 +382,88 @@
             </div>
         </div>
 
+        <div class="space-y-4">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h5 class="text-heading-foreground text-sm font-semibold">
+                        {{ __('Mandatory Enquiry Fields') }}
+                    </h5>
+                    <p class="text-muted-foreground mt-1 text-2xs/6">
+                        {{ __('Fields the bot must collect for lead qualification. Leave empty to use the default software/B2B list. Custom fields are stored on the conversation until mapped to enquiry columns.') }}
+                    </p>
+                </div>
+                <x-button
+                    class="shrink-0"
+                    type="button"
+                    size="xs"
+                    variant="success"
+                    @click="addEnquiryMandatoryField()"
+                >
+                    <x-tabler-plus class="size-4" />
+                    {{ __('Add Field') }}
+                </x-button>
+            </div>
+
+            <div class="space-y-3 rounded-lg border border-border/60 bg-background/60 p-5">
+                <template x-if="!Array.isArray(activeChatbot.enquiry_mandatory_fields) || activeChatbot.enquiry_mandatory_fields.length === 0">
+                    <div class="text-muted-foreground rounded-md border border-dashed border-border/60 bg-background p-4 text-2xs/6">
+                        {{ __('Using default software fields (name, company, requirement, interest, email, phone). Add fields to override for this chatbot.') }}
+                    </div>
+                </template>
+
+                <template
+                    x-for="(mandatoryField, index) in activeChatbot.enquiry_mandatory_fields"
+                    :key="'enquiry-mandatory-' + index"
+                >
+                    <div class="bg-card grid grid-cols-1 gap-3 rounded-md border border-border/60 p-4 md:grid-cols-[0.9fr_1fr_1.4fr_auto]">
+                        <div>
+                            <x-forms.input
+                                class:label="text-heading-foreground"
+                                label="{{ __('Field Key') }}"
+                                size="sm"
+                                x-model="mandatoryField.field"
+                                x-bind:name="'enquiry_mandatory_fields[' + index + '][field]'"
+                                placeholder="{{ __('e.g. symptoms') }}"
+                            />
+                        </div>
+                        <div>
+                            <x-forms.input
+                                class:label="text-heading-foreground"
+                                label="{{ __('Label') }}"
+                                size="sm"
+                                x-model="mandatoryField.label"
+                                x-bind:name="'enquiry_mandatory_fields[' + index + '][label]'"
+                                placeholder="{{ __('e.g. symptoms') }}"
+                            />
+                        </div>
+                        <div>
+                            <x-forms.input
+                                class:label="text-heading-foreground"
+                                label="{{ __('Ask Hint') }}"
+                                size="sm"
+                                x-model="mandatoryField.ask_hint"
+                                x-bind:name="'enquiry_mandatory_fields[' + index + '][ask_hint]'"
+                                placeholder="{{ __('e.g. Ask what symptoms they are experiencing.') }}"
+                            />
+                        </div>
+                        <div class="flex items-end">
+                            <x-button
+                                class="size-9"
+                                type="button"
+                                size="none"
+                                variant="ghost-shadow"
+                                hover-variant="danger"
+                                title="{{ __('Remove') }}"
+                                @click="removeEnquiryMandatoryField(index)"
+                            >
+                                <x-tabler-trash class="size-4" />
+                            </x-button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
         <div>
             <x-forms.input
                 class:label="text-heading-foreground flex-row-reverse justify-between"
