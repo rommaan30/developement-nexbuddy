@@ -1000,13 +1000,60 @@ body.nexbuddy-home {
     padding-bottom: 40px;
 }
 
+@media (max-width: 1199px) {
+    .hero-title {
+        font-size: 46px;
+        letter-spacing: -1.6px;
+    }
+
+    .hero-content {
+        padding-right: 12px;
+    }
+
+    .stats-title,
+    .lead-title,
+    .industries-title {
+        font-size: 40px;
+    }
+
+    .hero-orb {
+        width: 180px !important;
+        height: 180px !important;
+        right: -24px !important;
+        bottom: -36px !important;
+    }
+}
+
 @media (max-width: 991px) {
+    .nexbuddy-home .row {
+        --bs-gutter-x: 16px;
+        --bs-gutter-y: 16px;
+    }
+
+    .hero-section {
+        min-height: 0;
+        padding: 108px 0 48px;
+        overflow: hidden;
+    }
+
     .hero-content,
-    .guide-intro,
-    .guide-section .row {
-        padding-left: 0;
-        padding-right: 0;
+    .guide-section .guide-intro,
+    .guide-section .row,
+    .guide-section .px-5 {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .hero-content,
+    .lead-content {
         text-align: center;
+    }
+
+    .hero-badge {
+        max-width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: left;
     }
 
     .hero-title,
@@ -1014,11 +1061,13 @@ body.nexbuddy-home {
     .lead-title,
     .industries-title {
         font-size: 36px;
+        letter-spacing: -1.2px;
     }
 
     .hero-description {
         margin-left: auto;
         margin-right: auto;
+        font-size: 16px;
     }
 
     .hero-buttons,
@@ -1027,10 +1076,21 @@ body.nexbuddy-home {
         justify-content: center;
     }
 
+    .hero-image-box {
+        margin-top: 28px;
+        overflow: hidden;
+    }
+
+    .hero-orb {
+        width: 130px !important;
+        height: 130px !important;
+        right: 8px !important;
+        bottom: 8px !important;
+    }
+
     .guide-intro .section-title,
     .guide-intro .guide-text,
-    .guide-label,
-    .lead-section {
+    .guide-label {
         text-align: left;
     }
 
@@ -1043,17 +1103,47 @@ body.nexbuddy-home {
         grid-column: 1 / -1;
     }
 
-    .hero-orb {
-        width: 180px !important;
-        height: 180px !important;
-        right: -30px !important;
-        bottom: -50px !important;
+    .trust-section .container {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
+    .trust-card {
+        min-height: 0;
+        height: auto;
+        margin: 0;
+    }
+
+    .section-padding {
+        padding: 56px 0;
+    }
+
+    .lead-text,
+    .lead-list {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .lead-list {
+        max-width: 460px;
+        text-align: left;
+    }
+
+    .industries-title,
+    .industries-eyebrow,
+    .lead-eyebrow {
+        text-align: center;
+    }
+
+    .brand-logo-img {
+        height: 38px;
+        max-width: 168px;
     }
 }
 
 @media (max-width: 767px) {
     .hero-section {
-        padding-top: 110px;
+        padding-top: 96px;
     }
 
     .hero-title,
@@ -1062,33 +1152,103 @@ body.nexbuddy-home {
     .industries-title,
     .faq-title,
     .cta-title,
-    .section-title {
+    .section-title,
+    .guide-subtitle {
         font-size: 28px;
         letter-spacing: -1px;
     }
 
-    .stats-grid,
-    .footer-section .row {
-        grid-template-columns: 1fr;
+    .hero-description,
+    .section-subtitle,
+    .stats-description,
+    .guide-text,
+    .lead-text {
+        font-size: 15px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 32px;
+    }
+
+    .stat-card {
+        min-height: 120px;
+        border-radius: 22px;
+        padding: 16px 10px;
+    }
+
+    .stat-number {
+        font-size: 26px;
+    }
+
+    .stat-label {
+        font-size: 13px;
     }
 
     .stats-description-break {
         display: none;
     }
 
+    .footer-section .row {
+        grid-template-columns: 1fr;
+    }
+
     .cta-box {
-        padding: 36px 18px;
+        padding: 32px 16px;
+        border-radius: 24px;
     }
 
     .hero-buttons,
-    .cta-buttons {
+    .cta-buttons,
+    .navbar-buttons {
         flex-direction: column;
         align-items: stretch;
+        width: 100%;
     }
 
     .hero-start-btn,
     .hero-demo-btn,
-    .cta-buttons .btn {
+    .cta-buttons .btn,
+    .signin-btn,
+    .start-btn,
+    .lang-menu,
+    .lang-menu summary {
         width: 100%;
+    }
+
+    .hero-features {
+        justify-content: center;
+        row-gap: 6px;
+    }
+
+    .feature-card,
+    .tool-card,
+    .step-card-lg {
+        margin-bottom: 0;
+    }
+
+    .accordion-button {
+        text-align: left;
+    }
+
+    .footer-desc {
+        max-width: none;
+    }
+}
+
+@media (max-width: 420px) {
+    .brand-logo-img {
+        height: 32px;
+        max-width: 132px;
+    }
+
+    .hero-title {
+        font-size: 26px;
+    }
+
+    .hero-badge {
+        font-size: 11px;
+        padding: 6px 10px;
     }
 }

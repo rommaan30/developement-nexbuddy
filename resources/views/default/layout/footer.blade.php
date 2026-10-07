@@ -32,7 +32,7 @@
                 <ul class="footer-links list-unstyled">
                     <li><a href="tel:+919773375525">+91 97733 75525</a></li>
                     <li><a href="mailto:sales@nexbuddy.in">sales@nexbuddy.in</a></li>
-                    <li>F-50, Kohinoor City Mall, Kurla (W), Mumbai 400070</li>
+                    <li>Unit No. F-50, First Floor kohinoor City Mall Opp Holly Cross School, Kurla (West) Mumbai, Maharashtra - 400070.</li>
                 </ul>
             </div>
         </div>
