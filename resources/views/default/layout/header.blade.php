@@ -11,9 +11,10 @@
             </a>
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav mx-auto nav-links">
-                    <li class="nav-item"><a class="nav-link" href="#features">{{ __('Features') }}</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#ai-tools">{{ __('AI Tools') }}</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#how-it-works">{{ __('How it works') }}</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ route('index') }}#features">{{ __('Features') }}</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ route('index') }}#ai-tools">{{ __('AI Tools') }}</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ route('index') }}#how-it-works">{{ __('How it works') }}</a></li>
+                    <li class="nav-item"><a class="nav-link {{ request()->routeIs('pricing') ? 'is-active' : '' }}" href="{{ route('pricing') }}">{{ __('Pricing') }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="#contact">{{ __('Contact') }}</a></li>
                 </ul>
             </div>

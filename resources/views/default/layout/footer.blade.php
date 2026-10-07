@@ -15,10 +15,11 @@
             <div class="col-6 col-lg-2">
                 <h4 class="footer-heading">{{ __('Product') }}</h4>
                 <ul class="footer-links list-unstyled">
-                    <li><a href="#features">{{ __('Features') }}</a></li>
-                    <li><a href="#ai-tools">{{ __('AI Tools') }}</a></li>
-                    <li><a href="#how-it-works">{{ __('How it works') }}</a></li>
-                    <li><a href="#faq">{{ __('FAQ') }}</a></li>
+                    <li><a href="{{ route('index') }}#features">{{ __('Features') }}</a></li>
+                    <li><a href="{{ route('index') }}#ai-tools">{{ __('AI Tools') }}</a></li>
+                    <li><a href="{{ route('index') }}#how-it-works">{{ __('How it works') }}</a></li>
+                    <li><a href="{{ route('pricing') }}">{{ __('Pricing') }}</a></li>
+                    <li><a href="{{ route('index') }}#faq">{{ __('FAQ') }}</a></li>
                 </ul>
             </div>
             <div class="col-6 col-lg-2">

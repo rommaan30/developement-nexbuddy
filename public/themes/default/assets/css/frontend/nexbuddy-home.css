@@ -119,7 +119,8 @@ body.nexbuddy-home {
 }
 
 .nav-links .nav-link:hover,
-.nav-links .nav-link:focus {
+.nav-links .nav-link:focus,
+.nav-links .nav-link.is-active {
     color: #ffffff;
 }
 
@@ -982,7 +983,7 @@ body.nexbuddy-home {
 #pricing {
     background: #0c1028;
     color: #f5f5fb;
-    padding: 70px 0;
+    padding: 140px 0 70px 0px;
 }
 
 #pricing h2,
@@ -1158,7 +1159,10 @@ body.nexbuddy-home {
         padding-top: 30px;
         padding-bottom: 30px;
     }
-
+.nexbuddy-home #pricing {
+        padding-top: 110px;
+        padding-bottom: 30px;
+    }
     .hero-section {
         padding-top:110px;
         padding-bottom: 30px;
@@ -1380,5 +1384,375 @@ body.nexbuddy-home {
 
     .nexbuddy-home .cta-box {
         width: 100%;
+    }
+}
+
+.pricing-page {
+    background:
+        radial-gradient(circle at 50% 0%, rgba(120, 70, 180, 0.35) 0%, transparent 42%),
+        linear-gradient(180deg, #120c28 0%, #080b1f 28%, #07091a 100%);
+    padding: 140px 0 70px;
+    color: #f5f5fb;
+}
+
+.pricing-heading {
+    margin: 0 auto 28px;
+    text-align: center;
+}
+
+.pricing-kicker {
+    margin: 0 0 14px;
+    color: #ef67cf;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2.4px;
+}
+
+.pricing-title {
+    margin: 0;
+    font-size: 58px;
+    line-height: 1.05;
+    font-weight: 800;
+    letter-spacing: -1.8px;
+}
+
+.pricing-lead {
+    margin: 18px 0 0;
+    color: rgba(218, 221, 237, 0.72);
+    font-size: 18px;
+}
+
+.billing-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 auto 42px;
+    padding: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pricing-switch {
+    text-align: center;
+}
+
+.billing-toggle button {
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.72);
+    border-radius: 999px;
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.billing-toggle button.is-active {
+    color: #ffffff;
+    background: linear-gradient(100deg, #ef62cc 0%, #9a6cf8 55%, #6d8cff 100%);
+}
+
+.billing-save {
+    margin-left: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.plan-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+    align-items: stretch;
+}
+
+.plan-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: 32px 26px 28px;
+    border-radius: 28px;
+    background: rgba(16, 18, 40, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plan-card.is-popular {
+    background: linear-gradient(165deg, #f07ad0 0%, #c46bf2 42%, #7d78ff 100%);
+    border-color: transparent;
+    box-shadow: 0 24px 60px rgba(160, 80, 220, 0.28);
+}
+
+.plan-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: #111111;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.plan-name {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.plan-audience {
+    margin: 8px 0 26px;
+    color: rgba(218, 221, 237, 0.62);
+    font-size: 13px;
+}
+
+.plan-card.is-popular .plan-audience,
+.plan-card.is-popular .plan-billed,
+.plan-card.is-popular .plan-feature {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.plan-price {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 0;
+    font-size: 48px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -1.4px;
+}
+
+.plan-amount {
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1.4px;
+}
+
+.plan-period {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0;
+}
+
+.plan-billed {
+    margin: 12px 0 0;
+    color: rgba(218, 221, 237, 0.55);
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.plan-billed:empty {
+    display: none;
+    margin: 0;
+}
+
+.plan-credits {
+    margin: 20px 0 20px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.plan-card.is-popular .plan-credits {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.plan-features {
+    list-style: none;
+    margin: 0 0 28px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.plan-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: rgba(230, 232, 245, 0.86);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.plan-check {
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    border-radius: 50%;
+    flex: 0 0 16px;
+    background: #7b5cff;
+    position: relative;
+}
+
+.plan-check::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 3px;
+    width: 4px;
+    height: 7px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.plan-card.is-popular .plan-check {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.plan-cta {
+    margin-top: auto;
+    min-height: 46px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 600;
+    background: linear-gradient(100deg, #ef62cc 0%, #ad6df5 50%, #6998ff 100%);
+}
+
+.plan-cta:hover {
+    color: #ffffff;
+}
+
+.plan-card.is-popular .plan-cta {
+    background: #111111;
+}
+
+.pricing-note {
+    margin: 22px 0 0;
+    text-align: center;
+    color: rgba(218, 221, 237, 0.55);
+    font-size: 13px;
+}
+
+.compare-block {
+    margin-top: 78px;
+    text-align: center;
+}
+
+.compare-title {
+    margin: 0 0 28px;
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -1px;
+}
+
+.compare-wrap {
+    overflow-x: auto;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.compare-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+}
+
+.compare-table th,
+.compare-table td {
+    padding: 16px 18px;
+    text-align: center;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.compare-table th {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 700;
+}
+
+.compare-table td:first-child,
+.compare-table th:first-child {
+    text-align: left;
+    color: rgba(218, 221, 237, 0.8);
+    font-weight: 500;
+}
+
+.compare-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.compare-popular {
+    display: inline-flex;
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: linear-gradient(100deg, #ef62cc, #7d78ff);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
+.pricing-demo {
+    margin-top: 48px;
+    padding: 48px 24px;
+    text-align: center;
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.pricing-demo h2 {
+    margin: 0 0 8px;
+    font-size: 32px;
+    font-weight: 800;
+}
+
+.pricing-demo p {
+    margin: 0 0 22px;
+    color: rgba(218, 221, 237, 0.7);
+}
+
+.pricing-demo .plan-cta {
+    min-width: 180px;
+    padding: 0 28px;
+}
+
+@media (max-width: 1199px) {
+    .plan-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pricing-title {
+        font-size: 46px;
+    }
+}
+
+@media (max-width: 767px) {
+    .pricing-page {
+        padding: 96px 0 30px;
+    }
+
+    .pricing-title {
+        font-size: 32px;
+    }
+
+    .pricing-lead {
+        font-size: 16px;
+    }
+
+    .compare-title {
+        font-size: 28px;
+    }
+
+    .plan-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .plan-card.is-popular {
+        margin-top: 12px;
     }
 }

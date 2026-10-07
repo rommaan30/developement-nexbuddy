@@ -40,6 +40,7 @@ Route::view('account-deletion', 'default.account-deletion');
 Route::middleware('checkInstallation')
     ->group(static function () {
         Route::get('', IndexController::class)->name('index');
+        Route::get('pricing', [IndexController::class, 'pricing'])->name('pricing');
         Route::controller(PageController::class)
             ->group(static function () {
                 Route::get('privacy-policy', 'pagePrivacy')->name('pagePrivacy');

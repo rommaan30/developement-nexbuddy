@@ -6,6 +6,7 @@ use App\Extensions\DiscountManager\System\Models\PromoBanner;
 use App\Helpers\Classes\MarketplaceHelper;
 use App\Models\Blog;
 use App\Models\Clients;
+use App\Models\Plan;
 use App\Models\CustomSettings;
 use App\Models\Faq;
 use App\Models\Frontend\FrontendSectionsStatus;
@@ -106,6 +107,39 @@ class IndexController extends Controller
             'show_promo_banner',
             'bannerInfo'
         ));
+    }
+
+    public function pricing()
+    {
+        $plans = Plan::query()->where('active', true)->get();
+        $trial = $plans->first(fn ($plan) => strcasecmp((string) $plan->name, 'Free Trial') === 0);
+
+        $link = function (string $name, string $frequency, bool $useTrial = false) use ($plans, $trial) {
+            $match = $plans->first(function ($plan) use ($name, $frequency) {
+                return strcasecmp((string) $plan->name, $name) === 0
+                    && (string) $plan->frequency === $frequency;
+            });
+
+            if ($match) {
+                return route('register', ['plan' => $match->id]);
+            }
+
+            if ($useTrial && $trial) {
+                return route('register', ['plan' => $trial->id]);
+            }
+
+            return route('register');
+        };
+
+        return view('pricing', [
+            'starterMonthly' => $link('Starter', 'monthly', true),
+            'starterYearly' => $link('Starter', 'yearly', true),
+            'growthMonthly' => $link('Growth', 'monthly'),
+            'growthYearly' => $link('Growth', 'yearly'),
+            'businessMonthly' => $link('Business', 'monthly'),
+            'businessYearly' => $link('Business', 'yearly'),
+            'salesUrl' => 'mailto:sales@nexbuddy.in',
+        ]);
     }
 
     // / 1 // Defaults for How it Works bottom line
