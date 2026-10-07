@@ -223,24 +223,24 @@ body.nexbuddy-home {
 
 .menu-toggle {
     display: none;
-    width: 42px;
-    height: 42px;
-    margin-left: 8px;
+    width: 48px;
+    height: 48px;
+    margin-left: 4px;
     padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 12px;
+    border: 0;
+    border-radius: 0;
     background: transparent;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    gap: 5px;
-    flex: 0 0 42px;
+    gap: 6px;
+    flex: 0 0 48px;
 }
 
 .menu-toggle span {
     display: block;
-    width: 18px;
-    height: 2px;
+    width: 26px;
+    height: 2.5px;
     border-radius: 2px;
     background: #ffffff;
 }
