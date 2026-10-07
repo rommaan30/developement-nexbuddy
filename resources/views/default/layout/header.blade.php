@@ -7,8 +7,7 @@
     <nav class="navbar navbar-expand-lg custom-navbar">
         <div class="container">
             <a href="{{ route('index') }}" class="navbar-brand brand-wrapper">
-                <span class="brand-logo">N</span>
-                <span class="brand-name">Nexbuddy</span>
+                <img src="{{ custom_theme_url('assets/img/nexbuddy/nexgeno-logo.png') }}" alt="Nexgeno Technology Private Limited" class="brand-logo-img">
             </a>
             <button class="navbar-toggler custom-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -18,7 +17,6 @@
                     <li class="nav-item"><a class="nav-link" href="#features">{{ __('Features') }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="#ai-tools">{{ __('AI Tools') }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="#how-it-works">{{ __('How it works') }}</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#pricing">{{ __('Pricing') }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="#contact">{{ __('Contact') }}</a></li>
                 </ul>
                 <div class="navbar-buttons">

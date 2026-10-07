@@ -51,6 +51,19 @@ body.nexbuddy-home {
     text-decoration: none;
 }
 
+.brand-logo-img {
+    height: 46px;
+    width: auto;
+    max-width: 220px;
+    display: block;
+    object-fit: contain;
+}
+
+.footer-brand .brand-logo-img {
+    height: 64px;
+    max-width: 280px;
+}
+
 .brand-logo {
     width: 32px;
     height: 32px;

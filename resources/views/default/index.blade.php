@@ -370,8 +370,6 @@
         </div>
     </section>
 
-    @includeWhen(($fSectSettings->pricing_active ?? 0) == 1, 'landing-page.pricing.section')
-
     <section class="faq-section section-padding" id="faq">
         <div class="container">
             <div class="text-center mb-5">
@@ -418,7 +416,6 @@
                 <p class="cta-subtitle">{{ __('Join the businesses building intelligent assistants and automating workflows with') }} <br>{{ __('Nexbuddy.') }}</p>
                 <div class="cta-buttons">
                     <a href="{{ $accountUrl }}" class="btn btn-gradient btn-lg">{{ $trialLabel }}</a>
-                    <a href="#pricing" class="btn btn-outline-light btn-lg">{{ __('See Plans') }}</a>
                 </div>
             </div>
         </div>
