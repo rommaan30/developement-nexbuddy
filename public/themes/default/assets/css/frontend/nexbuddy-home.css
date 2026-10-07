@@ -1315,6 +1315,33 @@ body.nexbuddy-home {
     }
 }
 
+@media (max-width: 330px) {
+    .custom-navbar .container {
+        gap: 6px;
+    }
+
+    .custom-navbar .navbar-buttons {
+        gap: 4px;
+    }
+
+    .custom-navbar .brand-logo-img {
+        height: 26px;
+        max-width: 100px;
+    }
+
+    .custom-navbar .signin-btn,
+    .custom-navbar .start-btn,
+    .custom-navbar .lang-menu,
+    .custom-navbar .lang-menu summary {
+        width: 70px;
+        min-width: 70px;
+        flex: 0 0 70px;
+        height: 30px;
+        min-height: 30px;
+        font-size: 10px;
+    }
+}
+
 @media (min-width: 992px) {
     .nexbuddy-home .trust-section .section-label,
     .nexbuddy-home .stats-heading,
