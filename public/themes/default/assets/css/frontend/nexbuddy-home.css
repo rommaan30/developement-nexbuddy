@@ -28,14 +28,6 @@ body.nexbuddy-home {
     visibility: visible !important;
 }
 
-.nexbuddy-home .container {
-    width: 100%;
-    max-width: 1240px;
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 24px !important;
-    padding-right: 24px !important;
-}
 
 .custom-navbar {
     height: auto !important;
@@ -548,7 +540,7 @@ body.nexbuddy-home {
 }
 
 .trust-section {
-    padding: 70px 0 44px;
+    padding: 70px 0;
     background: linear-gradient(105deg, #142445 0%, #0b1029 48%, #17102c 100%);
     border-top: 1px solid rgba(255, 255, 255, 0.14);
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
@@ -880,7 +872,7 @@ body.nexbuddy-home {
 
 .footer-section {
     background: #07091b;
-    padding: 70px 0 25px;
+    padding: 70px 0;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -1041,7 +1033,7 @@ body.nexbuddy-home {
 
     .hero-section {
         min-height: 0;
-        padding: 108px 0 48px;
+        padding: 108px 0 70px;
         overflow: hidden;
     }
 
@@ -1123,9 +1115,6 @@ body.nexbuddy-home {
         margin: 0;
     }
 
-    .section-padding {
-        padding: 56px 0;
-    }
 
     .lead-text,
     .lead-list {
@@ -1151,8 +1140,18 @@ body.nexbuddy-home {
 }
 
 @media (max-width: 767px) {
+    .nexbuddy-home .section-padding,
+    .nexbuddy-home .trust-section,
+    .nexbuddy-home .footer-section,
+    .nexbuddy-home #pricing,
+    .nexbuddy-home #blog {
+        padding-top: 30px;
+        padding-bottom: 30px;
+    }
+
     .hero-section {
-        padding-top: 96px;
+        padding-top: 97px;
+        padding-bottom: 30px;
     }
 
     .hero-title,
@@ -1270,7 +1269,6 @@ body.nexbuddy-home {
     .nexbuddy-home .features-section .text-center,
     .nexbuddy-home .tools-section .text-center,
     .nexbuddy-home .how-section .text-center,
-    .nexbuddy-home .faq-section .text-center,
     .nexbuddy-home .guide-intro,
     .nexbuddy-home .guide-intro .section-title,
     .nexbuddy-home .guide-intro .guide-text,

@@ -376,8 +376,8 @@
                 <p class="section-label tools-label-pink">{{ __('FAQ') }}</p>
                 <h2 class="faq-title">{{ __('Frequently asked questions') }}</h2>
             </div>
-            <div class="row">
-                <div class="col-12">
+            <div class="row justify-content-center">
+                <div class="col-12 col-lg-8">
                     <div class="accordion custom-accordion" id="faqAccordion">
                         @php
                             $faqItems = collect([
