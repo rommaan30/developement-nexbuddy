@@ -1150,7 +1150,7 @@ body.nexbuddy-home {
     }
 
     .hero-section {
-        padding-top: 97px;
+        padding-top:110px;
         padding-bottom: 30px;
     }
 
@@ -1207,7 +1207,16 @@ body.nexbuddy-home {
         border-radius: 24px;
     }
 
-    .hero-buttons,
+    .hero-buttons {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        justify-content: stretch;
+        gap: 10px;
+        width: 100%;
+        margin-bottom: 24px;
+    }
+
     .cta-buttons,
     .navbar-buttons {
         flex-direction: column;
@@ -1217,6 +1226,26 @@ body.nexbuddy-home {
 
     .hero-start-btn,
     .hero-demo-btn,
+    .btn-tool,
+    .btn-gradient,
+    .cta-buttons .btn,
+    .signin-btn,
+    .start-btn,
+    .lang-menu summary {
+        min-height: 40px;
+        height: auto;
+        padding: 8px 10px;
+        font-size: 13px;
+        line-height: 1.2;
+    }
+
+    .hero-start-btn,
+    .hero-demo-btn {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+    }
+
     .cta-buttons .btn,
     .signin-btn,
     .start-btn,
