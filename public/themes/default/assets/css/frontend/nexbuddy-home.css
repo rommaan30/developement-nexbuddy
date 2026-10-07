@@ -28,6 +28,15 @@ body.nexbuddy-home {
     visibility: visible !important;
 }
 
+.nexbuddy-home .container {
+    width: 100%;
+    max-width: 1240px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+}
+
 .custom-navbar {
     height: auto !important;
     box-sizing: border-box;
@@ -1250,5 +1259,47 @@ body.nexbuddy-home {
     .hero-badge {
         font-size: 11px;
         padding: 6px 10px;
+    }
+}
+
+@media (min-width: 992px) {
+    .nexbuddy-home .trust-section .section-label,
+    .nexbuddy-home .stats-heading,
+    .nexbuddy-home .stats-title,
+    .nexbuddy-home .stats-description,
+    .nexbuddy-home .features-section .text-center,
+    .nexbuddy-home .tools-section .text-center,
+    .nexbuddy-home .how-section .text-center,
+    .nexbuddy-home .faq-section .text-center,
+    .nexbuddy-home .guide-intro,
+    .nexbuddy-home .guide-intro .section-title,
+    .nexbuddy-home .guide-intro .guide-text,
+    .nexbuddy-home .guide-label,
+    .nexbuddy-home .guide-subtitle,
+    .nexbuddy-home .section-subtitle {
+        text-align: left !important;
+    }
+
+    .nexbuddy-home .section-subtitle,
+    .nexbuddy-home .stats-description,
+    .nexbuddy-home .stats-title {
+        margin-left: 0;
+        margin-right: 0;
+        max-width: none;
+    }
+
+    .nexbuddy-home .hero-content {
+        padding-right: 28px;
+    }
+
+    .nexbuddy-home .hero-orb {
+        right: 0 !important;
+        bottom: -36px !important;
+        width: 190px !important;
+        height: 190px !important;
+    }
+
+    .nexbuddy-home .cta-box {
+        width: 100%;
     }
 }

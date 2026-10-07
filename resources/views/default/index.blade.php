@@ -62,7 +62,7 @@
     </section>
 
     <section class="trust-section">
-        <div class="container p-0">
+        <div class="container">
             <p class="section-label text-center mb-5">{{ __('Built on enterprise-grade foundations') }}</p>
             <div class="row">
                 <div class="col-6 col-sm-6 col-md-4 col-lg-2">
@@ -206,15 +206,15 @@
         </div>
     </section>
 
-    <section class="px-1 guide-section section-padding">
+    <section class="guide-section section-padding">
         <div class="container">
-            <div class="guide-intro text-center px-5">
+            <div class="guide-intro">
                 <div class="guide-label">{{ __('THE GUIDE') }}</div>
                 <h2 class="section-title">{{ __('What is an AI Assistant Platform?') }}</h2>
                 <p class="guide-text">{{ __('An AI assistant platform is a unified SaaS environment where businesses can design, train, and deploy intelligent virtual assistants — without writing code. Instead of stitching together half a dozen point tools, Nexbuddy brings AI chatbots, content generation, image creation, automation and analytics into a single workspace billed on flexible credit-based usage.') }}</p>
                 <p class="guide-text">{{ __('For modern startups, agencies and enterprises, this means faster customer support, more qualified leads, higher conversion rates and a measurable lift in team productivity — all powered by AI assistants that genuinely understand your business.') }}</p>
             </div>
-            <div class="row mt-5 px-5">
+            <div class="row mt-5">
                 <div class="col-12">
                     <h3 class="guide-subtitle">{{ __('How Businesses Use AI Assistants') }}</h3>
                 </div>
@@ -233,7 +233,7 @@
                     </div>
                 @endforeach
             </div>
-            <div class="row mt-5 px-5">
+            <div class="row mt-5">
                 <div class="col-12">
                     <h3 class="guide-subtitle">{{ __('How AI Training Works') }}</h3>
                     <p class="guide-text">{{ __('Training a high-quality AI assistant is a guided process — not a one-click illusion. Inside Nexbuddy you upload PDFs, paste website URLs, import sitemaps, add curated FAQs, and define a brand voice. Our AI onboarding system processes this content, indexes it for fast retrieval, and tunes the assistant to respond in your tone and within your business rules.') }}</p>
@@ -247,7 +247,7 @@
                     <p class="guide-text">{{ __('Most assistants reach production-quality within hours to a few days, depending on the volume of training material and the depth of integrations required.') }}</p>
                 </div>
             </div>
-            <div class="row mt-5 px-5">
+            <div class="row mt-5">
                 <div class="col-12">
                     <h3 class="guide-subtitle">{{ __('The Credit-Based AI Usage Model') }}</h3>
                     <p class="guide-text">{{ __('Traditional SaaS forces you to choose a fixed tier and overpay or hit hard limits. NEXBUDDY uses a flexible credit-based model: every AI action — a chat reply, a generated article, an image, a transcript — consumes credits proportional to its complexity. This makes scaling predictable and aligned with your real usage.') }}</p>
@@ -267,13 +267,13 @@
                     </div>
                 </div>
             </div>
-            <div class="row mt-5 px-5">
+            <div class="row mt-5">
                 <div class="col-12">
                     <h3 class="guide-subtitle">{{ __('Security & Privacy You Can Trust') }}</h3>
                     <p class="guide-text">{{ __('NEXBUDDY is built with enterprise-grade security from day one. All traffic is encrypted in transit with TLS, content is stored at rest with AES-256, and every workspace is logically isolated. Your business data is never used to train shared AI models. We provide GDPR-aligned processing, signed DPAs, and data residency options for Business and Enterprise customers.') }}</p>
                 </div>
             </div>
-            <div class="row mt-5 px-5">
+            <div class="row mt-5">
                 <div class="col-12">
                     <h3 class="guide-subtitle">{{ __('Why Choose Nexbuddy') }}</h3>
                     <p class="guide-text">{{ __('Unlike generic AI tools, NEXBUDDY is purpose-built for businesses that want to operationalize AI — not just experiment with it. You get a unified workspace, real training on your data, no-code deployment, transparent credit-based pricing, and a team backed by NexGen0\'s experience delivering digital products to 200+ brands.') }}</p>
@@ -376,8 +376,8 @@
                 <p class="section-label tools-label-pink">{{ __('FAQ') }}</p>
                 <h2 class="faq-title">{{ __('Frequently asked questions') }}</h2>
             </div>
-            <div class="row justify-content-center">
-                <div class="col-lg-8">
+            <div class="row">
+                <div class="col-12">
                     <div class="accordion custom-accordion" id="faqAccordion">
                         @php
                             $faqItems = collect([
