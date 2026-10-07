@@ -41,8 +41,62 @@
                     <a href="{{ route('register') }}" class="start-btn">{{ __('Start Free') }}</a>
                 @endauth
             </div>
+            <button type="button" class="menu-toggle" aria-label="{{ __('Open menu') }}" aria-expanded="false" aria-controls="mobileDrawer">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
     </nav>
+
+    <div class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
+        <div class="mobile-drawer-backdrop"></div>
+        <aside class="mobile-drawer-panel" aria-label="{{ __('Menu') }}">
+            <button type="button" class="mobile-drawer-close" aria-label="{{ __('Close menu') }}">&times;</button>
+            <ul class="mobile-drawer-links">
+                <li><a href="{{ route('index') }}#features">{{ __('Features') }}</a></li>
+                <li><a href="{{ route('index') }}#ai-tools">{{ __('AI Tools') }}</a></li>
+                <li><a href="{{ route('index') }}#how-it-works">{{ __('How it works') }}</a></li>
+                <li><a href="{{ route('pricing') }}">{{ __('Pricing') }}</a></li>
+                <li><a href="#contact">{{ __('Contact') }}</a></li>
+            </ul>
+            <div class="mobile-drawer-actions">
+                @auth
+                    <a href="{{ route('dashboard.index') }}" class="start-btn">{{ __('Dashboard') }}</a>
+                @else
+                    <a href="{{ route('login') }}" class="signin-btn">{{ __('Sign in') }}</a>
+                    <a href="{{ route('register') }}" class="start-btn">{{ __('Start Free') }}</a>
+                @endauth
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var toggle = document.querySelector('.menu-toggle');
+            var drawer = document.querySelector('.mobile-drawer');
+            if (!toggle || !drawer) return;
+
+            var setOpen = function (open) {
+                drawer.classList.toggle('is-open', open);
+                drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                document.body.classList.toggle('drawer-open', open);
+            };
+
+            toggle.addEventListener('click', function () {
+                setOpen(!drawer.classList.contains('is-open'));
+            });
+            drawer.querySelector('.mobile-drawer-backdrop').addEventListener('click', function () { setOpen(false); });
+            drawer.querySelector('.mobile-drawer-close').addEventListener('click', function () { setOpen(false); });
+            drawer.querySelectorAll('a').forEach(function (link) {
+                link.addEventListener('click', function () { setOpen(false); });
+            });
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') setOpen(false);
+            });
+        });
+    </script>
 
     @includeWhen($fSetting->floating_button_active, 'landing-page.header.floating-button')
 </header>

@@ -221,6 +221,34 @@ body.nexbuddy-home {
     background: rgba(255, 255, 255, 0.06);
 }
 
+.menu-toggle {
+    display: none;
+    width: 42px;
+    height: 42px;
+    margin-left: 8px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 12px;
+    background: transparent;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+    flex: 0 0 42px;
+}
+
+.menu-toggle span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: #ffffff;
+}
+
+.mobile-drawer {
+    display: none;
+}
+
 .custom-toggler {
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 10px;
@@ -249,8 +277,105 @@ body.nexbuddy-home {
 
 @media (max-width: 991px) {
     .custom-toggler,
-    .navbar-collapse {
+    .navbar-collapse,
+    .custom-navbar .container > .navbar-buttons {
         display: none !important;
+    }
+
+    .menu-toggle {
+        display: inline-flex;
+    }
+
+    .mobile-drawer {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    .mobile-drawer.is-open {
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    .mobile-drawer-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(4, 6, 18, 0.62);
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+
+    .mobile-drawer.is-open .mobile-drawer-backdrop {
+        opacity: 1;
+    }
+
+    .mobile-drawer-panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: min(320px, 86vw);
+        height: 100%;
+        padding: 22px 20px 28px;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(180deg, #141735 0%, #0b1024 100%);
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        transform: translateX(100%);
+        transition: transform 0.28s ease;
+    }
+
+    .mobile-drawer.is-open .mobile-drawer-panel {
+        transform: translateX(0);
+    }
+
+    .mobile-drawer-close {
+        align-self: flex-end;
+        width: 36px;
+        height: 36px;
+        border: 0;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #ffffff;
+        font-size: 26px;
+        line-height: 1;
+    }
+
+    .mobile-drawer-links {
+        list-style: none;
+        margin: 12px 0 0;
+        padding: 0;
+    }
+
+    .mobile-drawer-links a {
+        display: block;
+        padding: 14px 2px;
+        color: #f5f5fb;
+        text-decoration: none;
+        font-size: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .mobile-drawer-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: auto;
+    }
+
+    .mobile-drawer-actions .signin-btn,
+    .mobile-drawer-actions .start-btn {
+        width: 100%;
+        min-width: 0;
+        height: 46px;
+        flex: none;
+        font-size: 15px;
+    }
+
+    body.drawer-open {
+        overflow: hidden;
     }
 
     .custom-navbar .container {
