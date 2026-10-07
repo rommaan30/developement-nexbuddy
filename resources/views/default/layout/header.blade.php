@@ -9,9 +9,6 @@
             <a href="{{ route('index') }}" class="navbar-brand brand-wrapper">
                 <img src="{{ custom_theme_url('assets/img/nexbuddy/nexgeno-logo.png') }}" alt="Nexgeno Technology Private Limited" class="brand-logo-img">
             </a>
-            <button class="navbar-toggler custom-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav mx-auto nav-links">
                     <li class="nav-item"><a class="nav-link" href="#features">{{ __('Features') }}</a></li>
@@ -19,29 +16,29 @@
                     <li class="nav-item"><a class="nav-link" href="#how-it-works">{{ __('How it works') }}</a></li>
                     <li class="nav-item"><a class="nav-link" href="#contact">{{ __('Contact') }}</a></li>
                 </ul>
-                <div class="navbar-buttons">
-                    @if (count($languages) > 1)
-                        <details class="lang-menu">
-                            <summary class="signin-btn">{{ strtoupper(app()->getLocale()) }}</summary>
-                            <div class="lang-list">
-                                @foreach (\App\Helpers\Classes\Localization::getSupportedLocales() as $localeCode => $properties)
-                                    @if (in_array($localeCode, $languages))
-                                        <a href="{{ route('language.change', $localeCode) }}" rel="alternate" hreflang="{{ $localeCode }}">
-                                            {{ $properties['native'] }}
-                                        </a>
-                                    @endif
-                                @endforeach
-                            </div>
-                        </details>
-                    @endif
+            </div>
+            <div class="navbar-buttons">
+                @if (count($languages) > 1)
+                    <details class="lang-menu">
+                        <summary class="signin-btn">{{ strtoupper(app()->getLocale()) }}</summary>
+                        <div class="lang-list">
+                            @foreach (\App\Helpers\Classes\Localization::getSupportedLocales() as $localeCode => $properties)
+                                @if (in_array($localeCode, $languages))
+                                    <a href="{{ route('language.change', $localeCode) }}" rel="alternate" hreflang="{{ $localeCode }}">
+                                        {{ $properties['native'] }}
+                                    </a>
+                                @endif
+                            @endforeach
+                        </div>
+                    </details>
+                @endif
 
-                    @auth
-                        <a href="{{ route('dashboard.index') }}" class="start-btn">{{ __('Dashboard') }}</a>
-                    @else
-                        <a href="{{ route('login') }}" class="signin-btn">{{ __('Sign in') }}</a>
-                        <a href="{{ route('register') }}" class="start-btn">{{ __('Start Free') }}</a>
-                    @endauth
-                </div>
+                @auth
+                    <a href="{{ route('dashboard.index') }}" class="start-btn">{{ __('Dashboard') }}</a>
+                @else
+                    <a href="{{ route('login') }}" class="signin-btn">{{ __('Sign in') }}</a>
+                    <a href="{{ route('register') }}" class="start-btn">{{ __('Start Free') }}</a>
+                @endauth
             </div>
         </div>
     </nav>
