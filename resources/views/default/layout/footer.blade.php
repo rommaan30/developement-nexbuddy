@@ -3,7 +3,7 @@
         <div class="row g-4">
             <div class="col-lg-4">
                 <a href="{{ route('index') }}" class="footer-brand">
-                    <img src="{{ custom_theme_url('assets/img/nexbuddy/nexgeno-logo.png') }}" alt="Nexgeno Technology Private Limited" class="brand-logo-img">
+                    <img src="{{ custom_theme_url('assets/img/nexbuddy/nexgeno-logo.png') }}?v=white" alt="Nexgeno Technology Private Limited" class="brand-logo-img">
                 </a>
                 <p class="footer-desc">{{ __('Empowering businesses with next-generation AI automation and intelligent digital workflows. Build, train and deploy AI assistants and access 20+ AI tools — all from one unified platform.') }}</p>
                 <div class="footer-badges">

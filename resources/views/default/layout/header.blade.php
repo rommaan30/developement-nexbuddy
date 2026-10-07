@@ -7,7 +7,7 @@
     <nav class="navbar navbar-expand-lg custom-navbar">
         <div class="container">
             <a href="{{ route('index') }}" class="navbar-brand brand-wrapper">
-                <img src="{{ custom_theme_url('assets/img/nexbuddy/nexgeno-logo.png') }}" alt="Nexgeno Technology Private Limited" class="brand-logo-img">
+                <img src="{{ custom_theme_url('assets/img/nexbuddy/nexgeno-logo.png') }}?v=white" alt="Nexgeno Technology Private Limited" class="brand-logo-img">
             </a>
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav mx-auto nav-links">
