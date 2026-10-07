@@ -421,7 +421,6 @@ body.nexbuddy-home {
 
 .hero-section {
     position: relative;
-    min-height: calc(100vh - 72px);
     overflow: hidden;
     background:
         radial-gradient(circle at 75% 45%, rgba(111, 56, 144, 0.55) 0%, rgba(54, 34, 84, 0.30) 25%, transparent 55%),
