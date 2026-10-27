@@ -10,6 +10,9 @@
 
 /public/hot
 
+.htaccess
+
+/public/.htaccess
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
