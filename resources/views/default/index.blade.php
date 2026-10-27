@@ -29,7 +29,7 @@
                             {{ __('for Business Growth') }}
                         </h1>
                         <p class="hero-description">
-                            {{ __('Train intelligent AI assistants using your owns business data, automate customer conversations, generate content, and access powerful AI tools — all from one unified platform.') }}
+                            {{ __('Train intelligent AI assistants using your own business data, automate customer conversations, generate content, and access powerful AI tools — all from one unified platform.') }}
                         </p>
                         <div class="hero-buttons">
                             <a href="{{ $accountUrl }}" class="hero-start-btn">{{ $trialLabel }} <span class="arrow">→</span></a>
