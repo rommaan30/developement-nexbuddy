@@ -1,1 +1,0 @@
-UPDATE extensions SET version = 'v2' WHERE version is null;
