@@ -32,3 +32,4 @@ yarn-error.log*
 Thumbs.db
 *.zip
 
+/public/error_log
