@@ -67,7 +67,8 @@ class CommonController extends Controller
     {
         ini_set('max_input_vars', -1);
         $json = json_decode($request->input('json'), true, 512, JSON_THROW_ON_ERROR);
-        $column_name = $request->get('lang');
+        $column_name = (string) $request->get('lang');
+        abort_unless(preg_match('/^[A-Za-z_-]{2,10}$/', $column_name) === 1, 422);
         foreach ($json as $code => $column_value) {
             if (! empty($column_value)) {
                 $test = Strings::where('code', '=', $code)->update([$column_name => $column_value]);
@@ -182,7 +183,7 @@ class CommonController extends Controller
         $others = [];
 
         foreach ($request->input('files', []) as $file) {
-            $name = $file['name'] ?? 'file';
+            $name = basename(str_replace('\\', '/', (string) ($file['name'] ?? 'file')));
             $base64Data = $file['data'] ?? null;
 
             if (! $base64Data) {
@@ -198,6 +199,15 @@ class CommonController extends Controller
                     $name .= '.' . $extension;
                 }
             } else {
+                continue;
+            }
+
+            // Reject executable/script files and any embedded PHP, whatever the declared name or MIME type
+            if (
+                $name === '' || str_starts_with($name, '.')
+                || preg_match('/\.(php\d?|phtml|pht|phps|phar|html?|xhtml|shtml|js|mjs|exe|sh|bat|cmd|htaccess)(\.|$)/i', $name)
+                || str_contains($rawData, '<?php') || str_contains($rawData, '<?=')
+            ) {
                 continue;
             }
 

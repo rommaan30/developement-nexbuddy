@@ -724,6 +724,8 @@ class UserController extends Controller
 
     public function userOrdersList($user_id)
     {
+        abort_unless(auth()->user()->isAdmin() || (int) $user_id === auth()->id(), 403);
+
         $user = User::findOrFail($user_id);
         $list = $user->orders;
 
@@ -1153,7 +1155,9 @@ class UserController extends Controller
 
     public function deleteFolder(Request $request, $folder)
     {
-        $folder = Folders::findOrFail($folder);
+        $folder = Folders::query()
+            ->when(! auth()->user()->isAdmin(), fn ($query) => $query->where('created_by', auth()->id()))
+            ->findOrFail($folder);
         $all = $request->all;
         if ($all) {
             foreach ($folder->userOpenais as $userOpenai) {
@@ -2012,7 +2016,9 @@ class UserController extends Controller
         };
         $startDate = Carbon::createFromFormat('D M d Y H:i:s O', $cleanDates($request->start_date));
         $endDate = Carbon::createFromFormat('D M d Y H:i:s O', $cleanDates($request->end_date));
-        $invoices = UserOrder::whereBetween('created_at', [$startDate, $endDate])->get();
+        $invoices = UserOrder::whereBetween('created_at', [$startDate, $endDate])
+            ->when(! auth()->user()->isAdmin(), fn ($query) => $query->where('user_id', auth()->id()))
+            ->get();
         $service = new OrdersExportService;
 
         return match ($type) {

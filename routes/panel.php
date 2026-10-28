@@ -923,21 +923,25 @@ Route::group(['prefix' => config('elseyyid-location.prefix'), 'middleware' => co
     Route::get('setLocale', [CommonController::class, 'setLocale'])->name('lang.setLocale');
 });
 
-Route::post('translations/lang/update/{id}', '\Elseyyid\LaravelJsonLocationsManager\Controllers\HomeController@update')->name('elseyyid.translations.lang.update');
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::post('translations/lang/update/{id}', '\Elseyyid\LaravelJsonLocationsManager\Controllers\HomeController@update')->name('elseyyid.translations.lang.update');
 
-Route::post('translations/lang/update-all', [CommonController::class, 'translationsLangUpdateAll'])->name('elseyyid.translations.lang.update-all');
+    Route::post('translations/lang/update-all', [CommonController::class, 'translationsLangUpdateAll'])->name('elseyyid.translations.lang.update-all');
 
-Route::post('translations/lang-save', [CommonController::class, 'translationsLangSave'])->name('elseyyid.translations.lang.lang-save');
+    Route::post('translations/lang-save', [CommonController::class, 'translationsLangSave'])->name('elseyyid.translations.lang.lang-save');
+});
 
-Route::post('image/upload', [CommonController::class, 'imageUpload'])->name('upload.image');
+Route::middleware('auth')->group(function () {
+    Route::post('image/upload', [CommonController::class, 'imageUpload'])->name('upload.image');
 
-Route::post('images/upload', [CommonController::class, 'imagesUpload'])->name('upload.images');
+    Route::post('images/upload', [CommonController::class, 'imagesUpload'])->name('upload.images');
 
-Route::post('files/upload', [CommonController::class, 'filesUpload'])->name('upload.files');
+    Route::post('files/upload', [CommonController::class, 'filesUpload'])->name('upload.files');
 
-Route::post('pdf/getContent', [ChatPdfController::class, 'getSimiliarContent'])->name('pdf.getcontent');
+    Route::post('pdf/getContent', [ChatPdfController::class, 'getSimiliarContent'])->name('pdf.getcontent');
 
-Route::post('rss/fetch', [CommonController::class, 'rssFetch'])->name('rss.fetch');
+    Route::post('rss/fetch', [CommonController::class, 'rssFetch'])->name('rss.fetch');
+});
 
 $files = glob(base_path('routes/extroutes/*.php'));
 foreach ($files as $i => $iValue) {

@@ -75,7 +75,9 @@ class TeamController extends Controller
             ]);
         }
 
-        TeamMember::query()->create($request->validated());
+        abort_unless($request->user()?->id === $team->user_id, 403);
+
+        TeamMember::query()->create(array_merge($request->validated(), ['team_id' => $team->id]));
 
         dispatch(new SendTeamInviteEmail($request->user(), $request->get('email')));
 
@@ -87,6 +89,8 @@ class TeamController extends Controller
 
     public function teamMember(Team $team, TeamMember $teamMember)
     {
+        abort_if(auth()->id() !== $team->user_id || $teamMember->team_id !== $team->id, 404);
+
         return view('panel.user.team.edit', [
             'filter'           => 'all',
             'team'             => $team,
@@ -105,6 +109,8 @@ class TeamController extends Controller
                 'message' => trans('This feature is disabled in demo mode.'),
             ]);
         }
+
+        abort_if(auth()->id() !== $team->user_id || $teamMember->team_id !== $team->id, 404);
 
         $request['allow_unlimited_credits'] = (bool) $request->get('allow_unlimited_credits', false);
 

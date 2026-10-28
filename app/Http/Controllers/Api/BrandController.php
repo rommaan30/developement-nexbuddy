@@ -158,7 +158,7 @@ class BrandController extends Controller
             return response()->json(__('This feature is disabled in Demo version.'), 419);
         }
         if ($request->item_id != 'undefined') {
-            $item = Company::where('id', $request->item_id)->firstOrFail();
+            $item = Company::where('id', $request->item_id)->where('user_id', auth()->id())->firstOrFail();
         } else {
             $item = new Company;
         }

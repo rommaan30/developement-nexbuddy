@@ -30,6 +30,8 @@ class BrandController extends Controller
             return back()->with(['message' => __('This feature is disabled in Demo version.'), 'type' => 'error']);
         }
 
+        abort_unless($brand->user_id === Auth::id(), 403);
+
         Product::query()->where('company_id', $brand->getKey())->delete();
 
         $brand->delete();
@@ -48,6 +50,8 @@ class BrandController extends Controller
 
     public function edit(Company $brand)
     {
+        abort_unless($brand->user_id === Auth::id(), 403);
+
         return view('panel.user.companies.form', [
             'item'   => $brand,
             'action' => route('dashboard.user.brand.update', $brand->id),
@@ -72,6 +76,8 @@ class BrandController extends Controller
             return response()->json(__('This feature is disabled in Demo version.'), 419);
         }
 
+        abort_unless($brand->user_id === Auth::id(), 403);
+
         $this->service->update($request, $brand);
 
         return response()->json(['message' => __('Updated Successfully'), 'type' => 'success']);
@@ -79,6 +85,8 @@ class BrandController extends Controller
 
     public function getProducts(Company $brand): JsonResponse
     {
+        abort_unless($brand->user_id === Auth::id(), 403);
+
         return response()->json($brand->products);
     }
 }

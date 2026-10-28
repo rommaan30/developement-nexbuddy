@@ -14,7 +14,7 @@ class ExportChatController extends Controller
     public function generatePdf(Request $request)
     {
 
-        $messages = UserOpenaiChatMessage::where('user_openai_chat_id', $request->id)->get();
+        $messages = UserOpenaiChatMessage::where('user_openai_chat_id', $request->id)->where('user_id', auth()->id())->get();
 
         // for test
         return view('panel.admin.openai.chat.document.pdf', ['messages' => $messages]);
@@ -26,7 +26,7 @@ class ExportChatController extends Controller
 
     public function generateWord(Request $request)
     {
-        $messages = UserOpenaiChatMessage::where('user_openai_chat_id', $request->id)->get();
+        $messages = UserOpenaiChatMessage::where('user_openai_chat_id', $request->id)->where('user_id', auth()->id())->get();
 
         $phpWord = new PhpWord;
 
@@ -46,7 +46,7 @@ class ExportChatController extends Controller
 
     public function generateTxt(Request $request)
     {
-        $messages = UserOpenaiChatMessage::where('user_openai_chat_id', $request->id)->get();
+        $messages = UserOpenaiChatMessage::where('user_openai_chat_id', $request->id)->where('user_id', auth()->id())->get();
 
         $fileContents = '';
         foreach ($messages as $message) {

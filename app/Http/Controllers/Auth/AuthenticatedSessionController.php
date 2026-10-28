@@ -82,6 +82,7 @@ class AuthenticatedSessionController extends Controller
 
             $otp = random_int(1000, 9999);
             $user->update(['otp' => $otp]); // One DB write instead of save()
+            session(['otp_user_id' => $user->id, 'otp_expires_at' => now()->addMinutes(10)->timestamp]);
 
             try {
                 Mail::to($user->email)->send(new OtpEmail($user, $settings, $otp));
@@ -178,7 +179,16 @@ class AuthenticatedSessionController extends Controller
 
         $otp = implode('', $request->get('otp'));
 
-        $user = User::query()->where('otp', $otp)->first();
+        $otpUserId = $request->session()->get('otp_user_id');
+        $otpExpired = (int) $request->session()->get('otp_expires_at', 0) < now()->timestamp;
+
+        $user = $otpUserId && ! $otpExpired
+            ? User::query()->where('id', $otpUserId)->whereNotNull('otp')->first()
+            : null;
+
+        if ($user && ! hash_equals((string) $user->otp, (string) $otp)) {
+            $user = null;
+        }
 
         if (! $user) {
             return response()->json([
@@ -191,6 +201,7 @@ class AuthenticatedSessionController extends Controller
         $user->save();
 
         Auth::login($user);
+        $request->session()->forget(['otp_user_id', 'otp_expires_at']);
         $request->session()->regenerate();
 
         return response()->json([

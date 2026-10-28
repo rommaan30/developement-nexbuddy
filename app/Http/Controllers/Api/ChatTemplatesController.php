@@ -159,7 +159,9 @@ class ChatTemplatesController extends Controller
             $template = new OpenaiGeneratorChatCategory;
             $res = __('Template added successfully');
         } else {
-            $template = OpenaiGeneratorChatCategory::where('id', $request->template_id)->firstOrFail();
+            $template = OpenaiGeneratorChatCategory::where('id', $request->template_id)
+                ->when(! $request->user()->isAdmin(), fn ($query) => $query->where('user_id', $request->user()->id))
+                ->firstOrFail();
             $res = __('Template updates successfully');
         }
 
@@ -251,7 +253,9 @@ class ChatTemplatesController extends Controller
             return response()->json(['error' => __('ID required')], 412);
         }
 
-        $template = OpenaiGeneratorChatCategory::where('id', $id)->firstOrFail();
+        $template = OpenaiGeneratorChatCategory::where('id', $id)
+            ->when(! auth()->user()->isAdmin(), fn ($query) => $query->where('user_id', auth()->id()))
+            ->firstOrFail();
         $template->delete();
 
         return response()->json(['message' => 'Deleted Successfully'], 200);

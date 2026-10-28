@@ -305,7 +305,9 @@ class DocumentsApiController extends Controller
 
         $document = UserOpenai::select('user_openai.*', 'openai.title as ai_title', 'openai.image as ai_image', 'openai.color as ai_color')
             ->join('openai', 'openai.id', '=', 'user_openai.openai_id')
-            ->where('user_openai.id', $request->id)->first();
+            ->where('user_openai.id', $request->id)
+            ->where('user_openai.user_id', $request->user()->id)
+            ->first();
 
         if ($document == null) {
             return response()->json(['error' => __('Document not found')], 404);
@@ -392,7 +394,9 @@ class DocumentsApiController extends Controller
 
         $document = UserOpenai::select('user_openai.*', 'openai.title as ai_title', 'openai.image as ai_image', 'openai.color as ai_color')
             ->join('openai', 'openai.id', '=', 'user_openai.openai_id')
-            ->where('user_openai.id', $request->id)->first();
+            ->where('user_openai.id', $request->id)
+            ->where('user_openai.user_id', $request->user()->id)
+            ->first();
 
         if ($document == null) {
             return response()->json(['error' => __('Document not found')], 404);
@@ -459,7 +463,9 @@ class DocumentsApiController extends Controller
 
         $document = UserOpenai::select('user_openai.*', 'openai.title as ai_title', 'openai.image as ai_image', 'openai.color as ai_color')
             ->join('openai', 'openai.id', '=', 'user_openai.openai_id')
-            ->where('user_openai.id', $request->id)->first();
+            ->where('user_openai.id', $request->id)
+            ->where('user_openai.user_id', $request->user()->id)
+            ->first();
 
         if ($document == null) {
             return response()->json(['error' => __('Document not found')], 404);

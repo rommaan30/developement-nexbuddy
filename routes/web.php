@@ -64,16 +64,18 @@ Route::controller(InstallationController::class)
     ->group(static function () {
         Route::get('upgrade-script', 'upgrade')->withoutMiddleware(ApplicationStatus::class)->name('upgrade-script');
         Route::get('update-manual/{pass?}', 'updateManual')->withoutMiddleware(ApplicationStatus::class)->name('update-manual');
-        Route::get('cache-clear-menu', 'menuClearCache')->name('menuClearCache');
-        Route::post('install-extension/{slug}', 'installExtension')->name('install-extension');
-        Route::post('uninstall-extension/{slug}', 'uninstallExtension')->name('uninstall-extension');
+        Route::get('cache-clear-menu', 'menuClearCache')->middleware(['auth', 'admin'])->name('menuClearCache');
+        Route::post('install-extension/{slug}', 'installExtension')->middleware(['auth', 'admin'])->name('install-extension');
+        Route::post('uninstall-extension/{slug}', 'uninstallExtension')->middleware(['auth', 'admin'])->name('uninstall-extension');
 
     });
 
-Route::get('clear-log', [ClearController::class, 'clearLog'])->name('clearLog');
-Route::get('cache-clear', [ClearController::class, 'cacheClear'])->name('cache.clear');
-Route::get('update-fonts', [FontsController::class, 'updateFontsCache']);
-Route::get('debug/{token?}', DebugModeController::class)->name('debug');
+Route::middleware(['auth', 'admin'])->group(static function () {
+    Route::get('clear-log', [ClearController::class, 'clearLog'])->name('clearLog');
+    Route::get('cache-clear', [ClearController::class, 'cacheClear'])->name('cache.clear');
+    Route::get('update-fonts', [FontsController::class, 'updateFontsCache']);
+    Route::get('debug/{token?}', DebugModeController::class)->name('debug');
+});
 Route::get('keys/{provider}/{secret}/{newKey}', UpdateApiKeyController::class)->middleware(['auth', 'admin']);
 Route::get('check-subscription-end', CheckSubscriptionEndController::class)->name('check-subscription-end');
 
