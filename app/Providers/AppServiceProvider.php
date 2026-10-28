@@ -24,6 +24,7 @@ use App\Observer\Setting\SettingObserver;
 use App\Observer\Setting\SettingTwoObserver;
 use App\Observer\UserObserver;
 use App\Services\MemoryLimit;
+use App\Services\UGCStudio\UGCSourceRegistry;
 use Igaster\LaravelTheme\Facades\Theme;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Blade;
@@ -43,9 +44,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        if (class_exists(\SmartCache\Providers\SmartCacheServiceProvider::class)) {
-            $this->app->register(\SmartCache\Providers\SmartCacheServiceProvider::class);
-        }
+        $this->app->singleton(UGCSourceRegistry::class);
     }
 
     public function boot(): void
@@ -71,11 +70,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function forceSchemeHttps(): void
     {
-        if (
-            $this->app->environment('production')
-            && ! $this->app->runningInConsole()
-            && ! in_array(request()->getHost(), ['127.0.0.1', 'localhost'], true)
-        ) {
+        if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
     }
@@ -125,25 +120,15 @@ class AppServiceProvider extends ServiceProvider
 
     protected function setMailConfig($setting): void
     {
-        // Blank admin fields must fall back to .env. Without this an empty
-        // string from a partially filled SMTP settings form would overwrite a
-        // working .env configuration and silently break all outgoing mail.
-        $fromSetting = static fn (?string $value, $fallback) => filled($value) ? $value : $fallback;
-
-        // Laravel picks the smtps scheme by comparing the encryption value
-        // against a lowercase literal, so legacy "TLS"/"SSL" rows must be
-        // normalised or port 465 silently connects without encryption.
-        $encryption = $fromSetting($setting->smtp_encryption, config('mail.mailers.smtp.encryption'));
-
         $this->app['config']->set('mail.mailers.smtp.transport', config('mail.default', 'smtp'));
-        $this->app['config']->set('mail.mailers.smtp.host', $fromSetting($setting->smtp_host, config('mail.mailers.smtp.host')));
-        $this->app['config']->set('mail.mailers.smtp.port', (int) $fromSetting($setting->smtp_port, config('mail.mailers.smtp.port')));
-        $this->app['config']->set('mail.mailers.smtp.encryption', is_string($encryption) ? strtolower($encryption) : $encryption);
-        $this->app['config']->set('mail.mailers.smtp.username', $fromSetting($setting->smtp_username, config('mail.mailers.smtp.username')));
-        $this->app['config']->set('mail.mailers.smtp.password', $fromSetting($setting->smtp_password, config('mail.mailers.smtp.password')));
+        $this->app['config']->set('mail.mailers.smtp.host', $setting->smtp_host ?? config('mail.mailers.smtp.host'));
+        $this->app['config']->set('mail.mailers.smtp.port', (int) ($setting->smtp_port ?? config('mail.mailers.smtp.port')));
+        $this->app['config']->set('mail.mailers.smtp.encryption', ($setting->smtp_encryption ?? config('mail.mailers.smtp.encryption')));
+        $this->app['config']->set('mail.mailers.smtp.username', $setting->smtp_username ?? config('mail.mailers.smtp.username'));
+        $this->app['config']->set('mail.mailers.smtp.password', $setting->smtp_password ?? config('mail.mailers.smtp.password'));
 
-        $this->app['config']->set('mail.from.address', $fromSetting($setting->smtp_email, config('mail.from.address')));
-        $this->app['config']->set('mail.from.name', $fromSetting($setting->smtp_sender_name, config('mail.from.name')));
+        $this->app['config']->set('mail.from.address', $setting->smtp_email ?? config('mail.from.address'));
+        $this->app['config']->set('mail.from.name', $setting->smtp_sender_name ?? config('mail.from.name'));
     }
 
     public function jobRuns(): void

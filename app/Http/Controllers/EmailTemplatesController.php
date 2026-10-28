@@ -8,6 +8,7 @@ use App\Models\EmailTemplates;
 use App\Models\Extension;
 use App\Models\Subscriptions;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class EmailTemplatesController extends Controller
@@ -100,7 +101,7 @@ class EmailTemplatesController extends Controller
         ]);
     }
 
-    public function sendQueue(Request $request, int $id): \Illuminate\Http\RedirectResponse
+    public function sendQueue(Request $request, int $id): RedirectResponse
     {
         $template = EmailTemplates::query()
             ->findOrFail($id);
@@ -138,6 +139,11 @@ class EmailTemplatesController extends Controller
         } elseif ($request['customer_group'] == 'signed_up_but_purchase') {
             $users = User::query()
                 ->whereDoesntHave('subscriptions')
+                ->pluck('name', 'email')
+                ->toArray();
+        } elseif ($request['customer_group'] == 'shared_credit_users') {
+            $users = User::query()
+                ->where('credit_system_type', 'shared')
                 ->pluck('name', 'email')
                 ->toArray();
         } else {

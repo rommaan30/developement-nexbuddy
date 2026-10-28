@@ -99,6 +99,13 @@
                 {{ __('Generate') }}
                 <x-tabler-arrow-right class="size-5" />
             </x-button>
+
+            <div
+                x-data
+                x-init="$nextTick(() => $dispatch('generator-changed', { generator: '{{ \App\Domains\Entity\Enums\EntityEnum::IMAGE_TO_VIDEO->value }}' }))"
+            >
+                <x-cost-preview class="w-full" />
+            </div>
         </form>
     </x-card>
 

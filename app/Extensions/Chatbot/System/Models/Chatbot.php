@@ -6,9 +6,6 @@ use App\Extensions\Chatbot\System\Enums\BubbleDesign;
 use App\Extensions\Chatbot\System\Enums\ColorModeEnum;
 use App\Extensions\Chatbot\System\Enums\InteractionType;
 use App\Extensions\Chatbot\System\Enums\PositionEnum;
-use App\Extensions\Chatbot\System\Services\Enquiry\ChatbotInterestDictionary;
-use App\Extensions\Chatbot\System\Services\Enquiry\ChatbotMandatoryFields;
-use App\Extensions\Chatbot\System\Services\Enquiry\EnquiryDetectorService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,8 +25,6 @@ class Chatbot extends Model
         'welcome_message',
         'connect_message',
         'instructions',
-        'enquiry_interests',
-        'enquiry_mandatory_fields',
         'do_not_go_beyond_instructions',
         'suggested_prompts',
         'suggested_prompts_enabled',
@@ -114,8 +109,6 @@ class Chatbot extends Model
         'position'                           => PositionEnum::class,
         'interaction_type'                   => InteractionType::class,
         'do_not_go_beyond_instructions'      => 'boolean',
-        'enquiry_interests'                  => 'array',
-        'enquiry_mandatory_fields'           => 'array',
         'limit_per_minute'                   => 'integer',
         'show_pre_defined_questions'         => 'boolean',
         'pre_defined_questions'              => 'array',
@@ -138,38 +131,6 @@ class Chatbot extends Model
         'is_shop'                            => 'boolean',
         'shop_features'                      => 'json',
     ];
-
-    protected static function booted(): void
-    {
-        static::creating(static function (Chatbot $chatbot): void {
-            if (empty($chatbot->enquiry_interests)) {
-                $chatbot->enquiry_interests = ChatbotInterestDictionary::defaultSoftware();
-            } else {
-                $chatbot->enquiry_interests = ChatbotInterestDictionary::normalize($chatbot->enquiry_interests);
-            }
-        });
-
-        static::updating(static function (Chatbot $chatbot): void {
-            if ($chatbot->isDirty('enquiry_interests')) {
-                $chatbot->enquiry_interests = ChatbotInterestDictionary::normalize($chatbot->enquiry_interests);
-            }
-
-            if ($chatbot->isDirty('enquiry_mandatory_fields')) {
-                $normalized = ChatbotMandatoryFields::normalize($chatbot->enquiry_mandatory_fields);
-                $chatbot->enquiry_mandatory_fields = $normalized === [] ? null : $normalized;
-            }
-        });
-
-        static::saved(static function (Chatbot $chatbot): void {
-            if ($chatbot->wasChanged('enquiry_interests') || $chatbot->wasRecentlyCreated) {
-                EnquiryDetectorService::forgetCache((int) $chatbot->getKey());
-            }
-        });
-
-        static::deleted(static function (Chatbot $chatbot): void {
-            EnquiryDetectorService::forgetCache((int) $chatbot->getKey());
-        });
-    }
 
     public function conversations(): HasMany
     {

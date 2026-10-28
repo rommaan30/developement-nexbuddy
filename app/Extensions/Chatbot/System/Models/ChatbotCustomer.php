@@ -3,7 +3,6 @@
 namespace App\Extensions\Chatbot\System\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ChatbotCustomer extends Model
 {
@@ -26,9 +25,4 @@ class ChatbotCustomer extends Model
     protected $casts = [
         'payload' => 'json',
     ];
-
-    public function enquiries(): HasMany
-    {
-        return $this->hasMany(ChatbotEnquiry::class, 'chatbot_customer_id');
-    }
 }

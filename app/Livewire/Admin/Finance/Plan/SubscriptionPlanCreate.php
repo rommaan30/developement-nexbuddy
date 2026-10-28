@@ -6,6 +6,7 @@ use App\Domains\Engine\Enums\EngineEnum;
 use App\Domains\Entity\Enums\EntityEnum;
 use App\Domains\Entity\Models\Entity;
 use App\Enums\AccessType;
+use App\Extensions\Chatbot\System\Helpers\ChatbotHelper;
 use App\Helpers\Classes\Helper;
 use App\Http\Controllers\Finance\PaymentProcessController;
 use App\Livewire\Concerns\WithSteps;
@@ -50,40 +51,52 @@ class SubscriptionPlanCreate extends Component
     {
         return array_merge([
             // Step 1
-            'plan.active'                                  => 'required_if:step,1|boolean',
-            'plan.name'                                    => 'required_if:step,1|string|max:190',
-            'plan.description'                             => 'required_if:step,1|string|max:15000',
-            'plan.features'                                => 'required_if:step,1|string|max:15000',
-            'plan.price'                                   => 'required_if:step,1|numeric|min:0',
-            'plan.frequency'                               => 'required_if:step,1|string|max:190',
-            'plan.is_team_plan'                            => 'required_if:step,1|nullable|boolean',
-            'plan.price_tax_included'                      => 'required_if:step,1|nullable|boolean',
-            'plan.plan_allow_seat'                         => 'nullable|numeric|min:0',
-            'plan.trial_days'                              => 'required_if:step,1|numeric|min:0',
-            'plan.chatbot_limit'                           => 'nullable|integer|min:0',
-            'plan.chatbot_channels'                        => 'nullable|array',
-            'plan.chatbot_channels.*'                      => 'nullable|boolean',
-            'plan.chatbot_channels.telegram'               => 'nullable|boolean',
-            'plan.chatbot_channels.whatsapp'               => 'nullable|boolean',
-            'plan.chatbot_channels.messenger'              => 'nullable|boolean',
-            'plan.chatbot_channels.instagram'              => 'nullable|boolean',
-            'plan.chatbot_human_agent'                     => 'nullable|boolean',
-            'plan.affiliate_status'                        => 'nullable|boolean',
-            'plan.is_featured'                             => 'required_if:step,1|nullable|boolean',
-            'plan.user_api'                                => 'required_if:step,1|nullable|boolean',
-            'plan.plan_type'                               => 'required_if:step,1|in:' . implode(',', AccessType::getValues()),
-            'plan.default_ai_model'                        => 'required_if:step,1|string|max:255',
-            'plan.hidden'                                  => 'boolean',
-            'plan.max_subscribe'                           => 'integer|min:-1|nullable',
-            'plan.multi_model_support'                     => 'nullable',
-            'plan.reset_credits_on_renewal'                => 'boolean',
-            'plan.last_date'                               => 'date|nullable',
-            'plan.hidden_url'                              => 'nullable',
-            'plan.social_media_agent_limits.agents'        => 'nullable|integer|min:-1',
-            'plan.social_media_agent_limits.monthly_posts' => 'nullable|integer|min:-1',
-            'plan.blogpilot_limits.agents'                 => 'nullable|integer|min:-1',
-            'plan.blogpilot_limits.monthly_posts'          => 'nullable|integer|min:-1',
-            'plan.voice_call_seconds_limit'                => 'nullable|integer|min:-1',
+            'plan.active'                                     => 'required_if:step,1|boolean',
+            'plan.name'                                       => 'required_if:step,1|string|max:190',
+            'plan.description'                                => 'required_if:step,1|string|max:15000',
+            'plan.features'                                   => 'required_if:step,1|string|max:15000',
+            'plan.price'                                      => 'required_if:step,1|numeric|min:0',
+            'plan.frequency'                                  => 'required_if:step,1|string|max:190',
+            'plan.is_team_plan'                               => 'required_if:step,1|nullable|boolean',
+            'plan.price_tax_included'                         => 'required_if:step,1|nullable|boolean',
+            'plan.plan_allow_seat'                            => 'nullable|numeric|min:0',
+            'plan.trial_days'                                 => 'required_if:step,1|numeric|min:0',
+            'plan.chatbot_limit'                              => 'nullable|integer|min:0',
+            'plan.chatbot_channels'                           => 'nullable|array',
+            'plan.chatbot_channels.*'                         => 'nullable|boolean',
+            'plan.chatbot_channels.telegram'                  => 'nullable|boolean',
+            'plan.chatbot_channels.whatsapp'                  => 'nullable|boolean',
+            'plan.chatbot_channels.messenger'                 => 'nullable|boolean',
+            'plan.chatbot_channels.instagram'                 => 'nullable|boolean',
+            'plan.chatbot_human_agent'                        => 'nullable|boolean',
+            'plan.affiliate_status'                           => 'nullable|boolean',
+            'plan.is_featured'                                => 'required_if:step,1|nullable|boolean',
+            'plan.user_api'                                   => 'required_if:step,1|nullable|boolean',
+            'plan.plan_type'                                  => 'required_if:step,1|in:' . implode(',', AccessType::getValues()),
+            'plan.default_ai_model'                           => 'required_if:step,1|string|max:255',
+            'plan.hidden'                                     => 'boolean',
+            'plan.max_subscribe'                              => 'integer|min:-1|nullable',
+            'plan.multi_model_support'                        => 'nullable',
+            'plan.reset_credits_on_renewal'                   => 'boolean',
+            'plan.last_date'                                  => 'date|nullable',
+            'plan.hidden_url'                                 => 'nullable',
+            'plan.social_media_agent_limits.agents'           => 'nullable|integer|min:-1',
+            'plan.social_media_agent_limits.monthly_posts'    => 'nullable|integer|min:-1',
+            'plan.blogpilot_limits.agents'                    => 'nullable|integer|min:-1',
+            'plan.blogpilot_limits.monthly_posts'             => 'nullable|integer|min:-1',
+            'plan.voice_call_seconds_limit'                   => 'nullable|integer|min:-1',
+            'plan.marketing_bot_limits.max_contacts'          => 'nullable|integer|min:-1',
+            'plan.marketing_bot_limits.monthly_messages'      => 'nullable|integer|min:-1',
+            'plan.marketing_bot_limits.channels'              => 'nullable|array',
+            'plan.marketing_bot_limits.channels.*'            => 'nullable|string|in:whatsapp,telegram',
+            'plan.ai_agent_workflow_limit'                    => 'nullable|integer|min:-1',
+            'plan.ai_agent_channel_limit'                     => 'nullable|integer|min:-1',
+            'plan.ai_agent_message_limit'                     => 'nullable|integer|min:-1',
+            'plan.ai_agent_memory_limit'                      => 'nullable|integer|min:-1',
+            'plan.social_media_automation_limits.automations' => 'nullable|integer|min:-1',
+            'plan.credit_system_type'                         => 'required_if:step,1|in:separated,shared',
+            'plan.shared_credits_amount'                      => 'required_if:plan.credit_system_type,shared|nullable|numeric|min:0',
+            'plan.model_council_support'                      => 'nullable|boolean',
         ],
             // Step 2
             $this->rulesOfPlanAiTools(),
@@ -158,9 +171,14 @@ class SubscriptionPlanCreate extends Component
         }
 
         $isSensitiveDataChanged = $this->isSensitiveDataChanged();
-        $this->changePlanValuesWithSuppliedEntities();
+        if (! $this->plan->isSharedCreditPlan()) {
+            $this->changePlanValuesWithSuppliedEntities();
+        }
         $this->normalizeSocialMediaAgentLimits();
         $this->normalizeBlogPilotLimits();
+        $this->normalizeMarketingBotLimits();
+        $this->normalizeSocialMediaAutomationLimits();
+        $this->normalizeAiAgentLimits();
         $this->plan->save();
         if ($isSensitiveDataChanged) {
             PaymentProcessController::saveGatewayProducts($this->plan, $this->gatewaysToCreatePriceIds);
@@ -254,6 +272,51 @@ class SubscriptionPlanCreate extends Component
         $this->plan->blogpilot_limits = $limits;
     }
 
+    private function normalizeSocialMediaAutomationLimits(): void
+    {
+        $limits = (array) ($this->plan->social_media_automation_limits ?? []);
+        foreach (['automations'] as $key) {
+            $value = $limits[$key] ?? null;
+            if ($value === null || $value === '') {
+                $limits[$key] = -1;
+
+                continue;
+            }
+            $limits[$key] = max(-1, (int) $value);
+        }
+
+        $this->plan->social_media_automation_limits = $limits;
+    }
+
+    private function normalizeMarketingBotLimits(): void
+    {
+        $limits = (array) ($this->plan->marketing_bot_limits ?? []);
+
+        foreach (['max_contacts', 'monthly_messages'] as $key) {
+            $value = $limits[$key] ?? null;
+            if ($value === null || $value === '') {
+                $limits[$key] = -1;
+
+                continue;
+            }
+            $limits[$key] = max(-1, (int) $value);
+        }
+
+        if (empty($limits['channels'])) {
+            $limits['channels'] = ['whatsapp', 'telegram'];
+        }
+
+        $this->plan->marketing_bot_limits = $limits;
+    }
+
+    private function normalizeAiAgentLimits(): void
+    {
+        foreach (['ai_agent_workflow_limit', 'ai_agent_channel_limit', 'ai_agent_message_limit', 'ai_agent_memory_limit'] as $column) {
+            $value = $this->plan->{$column};
+            $this->plan->{$column} = ($value === null || $value === '') ? -1 : max(-1, (int) $value);
+        }
+    }
+
     private function isSensitiveDataChanged(): bool
     {
         // check if price_id did not create for any gateway
@@ -282,11 +345,11 @@ class SubscriptionPlanCreate extends Component
 
     private function hydrateChatbotChannels(): void
     {
-        if (! class_exists(\App\Extensions\Chatbot\System\Helpers\ChatbotHelper::class)) {
+        if (! class_exists(ChatbotHelper::class)) {
             return;
         }
 
-        $availableChannels = \App\Extensions\Chatbot\System\Helpers\ChatbotHelper::installedChannelKeys();
+        $availableChannels = ChatbotHelper::installedChannelKeys();
 
         if ($availableChannels === []) {
             return;

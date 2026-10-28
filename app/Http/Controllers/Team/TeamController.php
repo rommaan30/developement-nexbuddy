@@ -16,7 +16,7 @@ class TeamController extends Controller
 {
     public function __construct()
     {
-        abort_if(! app()->runningInConsole() && ! Helper::setting('team_functionality'), 404);
+        abort_if(! Helper::setting('team_functionality'), 404);
     }
 
     public function index(Request $request)
@@ -113,8 +113,9 @@ class TeamController extends Controller
         // $manager_remaining_words = $user->remaining_words;
 
         $data = $request->validate([
-            'role'             => 'required',
-            'status'           => 'required',
+            'role'                      => 'required',
+            'status'                    => 'required',
+            'daily_shared_credit_limit' => 'sometimes|nullable|numeric|min:0',
             // 'remaining_images' => $request['allow_unlimited_credits']
             //     ? 'sometimes|nullable|numeric'
             //     : 'required|numeric|max:' . $manager_remaining_images,

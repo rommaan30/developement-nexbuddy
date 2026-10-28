@@ -15,6 +15,7 @@ class TeamMember extends Model
         'email',
         'status',
         'allow_unlimited_credits',
+        'daily_shared_credit_limit',
         'remaining_images',
         'remaining_words',
         'used_image_credit',
@@ -23,7 +24,8 @@ class TeamMember extends Model
     ];
 
     protected $casts = [
-        'joined_at' => 'datetime',
+        'joined_at'                 => 'datetime',
+        'daily_shared_credit_limit' => 'float',
     ];
 
     public function user(): BelongsTo

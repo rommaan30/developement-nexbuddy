@@ -10,7 +10,7 @@
     'xModel' => null,
 ])
 <label
-    {{ $attributes->withoutTwMergeClasses()->twMerge('form-check form-switch flex items-center gap-2 mb-0') }}
+    {{ $attributes->withoutTwMergeClasses()->whereDoesntStartWith(['wire:', 'value'])->twMerge('form-check form-switch flex items-center gap-2 mb-0') }}
     :for="$id('text-input')"
 >
     @if ($position === 'left')
@@ -28,6 +28,7 @@
         :id="$id('text-input')"
         type="checkbox"
         @if ($attributes->has('wire:model')) wire:model="{{ $attributes->get('wire:model') }}" @endif
+    	@if ($attributes->has('wire:change')) wire:change="{{ $attributes->get('wire:change') }}" @endif
         @if ($error) aria-invalid="true" autofocus x-bind:aria-describedby="@if ($id ?? '') {{ $id }}-error @else $id('text-input') + '-error' @endif"
         @endif
     @if ($checked) checked @endif

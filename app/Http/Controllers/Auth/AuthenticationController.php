@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\EmailConfirmation;
+use App\Classes\PapAffiliate;
 use App\Events\UsersActivityEvent;
+use App\Extensions\Hubspot\System\Services\HubspotService;
 use App\Helpers\Classes\MarketplaceHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
@@ -74,9 +76,8 @@ class AuthenticationController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
         $user = Auth::user();
-        $ip = $request->ip();
         $connection = $request->header('User-Agent');
-        event(new UsersActivityEvent($user?->email, $user?->type, $ip, $connection));
+        event(new UsersActivityEvent($user?->email, $user?->type, $connection));
 
         return redirect()->intended(RouteServiceProvider::HOME);
     }
@@ -114,9 +115,8 @@ class AuthenticationController extends Controller
             $user->updateCredits(setting('freeCreditsUponRegistration', User::getFreshCredits()));
         }
         Auth::login($user);
-        $ip = $request->ip();
         $connection = $request->header('User-Agent');
-        event(new UsersActivityEvent($user->email, $user->type, $ip, $connection));
+        event(new UsersActivityEvent($user->email, $user->type, $connection));
 
         return redirect('/dashboard/user');
     }
@@ -153,9 +153,8 @@ class AuthenticationController extends Controller
                 $user->updateCredits(setting('freeCreditsUponRegistration', User::getFreshCredits()));
             }
             Auth::login($user);
-            $ip = $request->ip();
             $connection = $request->header('User-Agent');
-            event(new UsersActivityEvent($user->email, $user->type, $ip, $connection));
+            event(new UsersActivityEvent($user->email, $user->type, $connection));
         }
 
         return redirect('/dashboard/user');
@@ -299,7 +298,7 @@ class AuthenticationController extends Controller
             Auth::login($user);
 
             // Log user activity (for analytics or auditing)
-            event(new UsersActivityEvent($user->email, $user->type, $request->ip(), $request->header('User-Agent')));
+            event(new UsersActivityEvent($user->email, $user->type, $request->header('User-Agent')));
         } else {
             return response()->json([
                 'errors' => ['We have sent you an email for account confirmation. Please confirm your account to continue.'],
@@ -310,7 +309,7 @@ class AuthenticationController extends Controller
         // External API Integrations (PapAffiliate, Mailchimp, Hubspot)
         if (class_exists('App\Classes\PapAffiliate')) {
             try {
-                (new \App\Classes\PapAffiliate)->addAffiliate([
+                (new PapAffiliate)->addAffiliate([
                     'email'        => $user->email,
                     'firstname'    => $request->input('name'),
                     'lastname'     => $request->input('surname'),
@@ -339,7 +338,7 @@ class AuthenticationController extends Controller
 
         // Hubspot integration (if configured)
         if (MarketplaceHelper::isRegistered('hubspot') && setting('hubspot_crm_contact_register') === 1) {
-            (new \App\Extensions\Hubspot\System\Services\HubspotService)
+            (new HubspotService)
                 ->createCrmContacts($request->email, $request->input('name'), $request->input('surname'));
         }
 

@@ -11,12 +11,16 @@ import clipboard from './components/clipboard';
 import assignViewCredits from './components/assignViewCredits';
 import openaiRealtime from './components/realtime-frontend/openaiRealtime';
 import advancedImageEditor from './components/advancedImageEditor';
-import { debounce, throttle } from 'lodash';
+import { debounce, throttle, defer } from 'lodash';
 import creativeSuite from './components/creative-suite/creativeSuite';
 import { lqdCustomizer, lqdCustomizerFontPicker } from './components/customizer';
 import { lqdSidedrawer } from './components/sidedrawer';
 import elevenlabsRealtime from './components/realtime-frontend/elevenlabsRealtime';
 import tiptapEditor from './tiptapEditor';
+import liquidTabs from './components/tabs';
+import liquidSelectBox from './components/selectBox';
+import liquidDropArea from './components/dropArea';
+import liquidRecorder from './components/recorder';
 
 window.fetchEventSource = fetchEventSource;
 const darkMode = localStorage.getItem( 'lqdDarkMode' );
@@ -65,6 +69,34 @@ document.addEventListener( 'alpine:init', () => {
 	Alpine.data( 'modal', data => modal( data ) );
 	Alpine.data( 'clipboard', data => clipboard( data ) );
 	Alpine.data( 'assignViewCredits', data => assignViewCredits( data ) );
+	Alpine.data( 'liquidTabs', data => liquidTabs( data ) );
+	Alpine.data( 'liquidSelectBox', data => liquidSelectBox( data ) );
+	Alpine.data( 'liquidDropArea', data => liquidDropArea( data ) );
+	Alpine.data( 'liquidRecorder', data => liquidRecorder( data ) );
+
+	// Liquid Modal
+	Alpine.data('liquidModal', ({ disableModal = false, disableModalMessage = '' } = {}) => ({
+		modalLocked: false,
+		_modalOpen: false,
+
+		get modalOpen() {
+			return this._modalOpen;
+		},
+		set modalOpen(value) {
+			if (this.modalLocked) return;
+
+			if (disableModal) {
+				toastr.info(disableModalMessage ?? 'This feature is currently disabled.');
+				return;
+			}
+
+			this._modalOpen = value;
+		},
+
+		toggleModal(state) {
+			this.modalOpen = state !== undefined ? state : !this.modalOpen;
+		}
+	}));
 
 	// Navbar shrink
 	Alpine.store( 'navbarShrink', {
@@ -847,8 +879,7 @@ document.addEventListener( 'alpine:init', () => {
 			},
 		},
 		trigger: {
-			// .stop to prevent bubbling event when the dropdown is inside another trigger. for example in chat pro folders
-			[ '@click.prevent.stop' ]() {
+			[ '@click.prevent' ]() {
 				// we need to be able to toggle dropdown when focus/enter key is pressed
 				// if (this.triggerType !== 'click') return;
 

@@ -121,6 +121,22 @@
 						@enderror
 					</div>
 				</div>
+				@if ($team->isSharedCreditTeam())
+					<div class="col-md-12">
+						<div class="mb-3">
+							<label class="form-label">{{ __('Daily Credit Limit (empty = unlimited)') }}</label>
+							<input
+								class="form-control"
+								type="number"
+								name="daily_shared_credit_limit"
+								step="0.01"
+								min="0"
+								value="{{ $member->daily_shared_credit_limit }}"
+								placeholder="{{ __('e.g. 500') }}"
+							>
+						</div>
+					</div>
+				@endif
 				<div class="col-md-12">
 					<button
 						class="btn btn-primary w-full"

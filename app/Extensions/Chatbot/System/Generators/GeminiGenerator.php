@@ -51,6 +51,10 @@ class GeminiGenerator extends Generator
 
         $result = $this->chat($body, $apiKey);
 
+        if (! $result->successful() || empty($result->json('candidates.0.content.parts'))) {
+            Log::error('Gemini first call problem: ' . substr($result->body(), 0, 1500));
+        }
+
         // Check for function calls
         $functionCalls = $this->extractFunctionCalls($result);
 
@@ -141,6 +145,10 @@ class GeminiGenerator extends Generator
 
                 $finalResult = $this->chat($body, $apiKey);
 
+                if (! $finalResult->successful()) {
+                    Log::error('Gemini follow-up failed: ' . $finalResult->body());
+                }
+
                 $aiText = $this->extractText($finalResult) ?: 'Sorry, I can\'t answer that.';
 
                 return $ecommerceUi !== null ? '<p>' . e($aiText) . '</p>' . $ecommerceUi : $aiText;
@@ -201,12 +209,6 @@ class GeminiGenerator extends Generator
 
         if ($this->chatbot->getAttribute('is_shop')) {
             $systemMessages[] = $this->shopAssistantInstruction();
-        }
-
-        $leadInstruction = $this->leadQualificationInstruction();
-
-        if ($leadInstruction) {
-            $systemMessages[] = $leadInstruction;
         }
 
         // Prepend system message
@@ -440,6 +442,10 @@ Rules:
             'Content-Type' => 'application/json',
         ])
             ->timeout(60)
+            ->retry(3, 2000, function ($exception) {
+                return $exception instanceof \Illuminate\Http\Client\RequestException
+                    && in_array($exception->response->status(), [500, 503], true);
+            }, false)
             ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", $data);
     }
 

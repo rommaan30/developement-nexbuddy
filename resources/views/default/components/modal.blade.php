@@ -5,7 +5,7 @@
     $modal_head_base_class = 'lqd-modal-head flex flex-wrap items-center gap-3 border-b px-4 py-2 relative';
     $modal_body_base_class = 'lqd-modal-body p-10';
     $modal_content_base_class =
-        'lqd-modal-content relative z-[100] max-h-[95vh] min-w-[min(calc(100%-2rem),540px)] overflow-y-auto overscroll-contain rounded-xl bg-background shadow-2xl shadow-black/10';
+        'lqd-modal-content relative z-[100] max-h-[95vh] min-w-[min(100%,540px)] overflow-y-auto overscroll-contain rounded-xl bg-background shadow-2xl shadow-black/10';
     $modal_close_btn_base_class = 'lqd-modal-close size-8 ms-auto inline-flex items-center justify-center rounded-lg transition-all hover:bg-foreground/20';
 
     if ($type !== 'inline') {
@@ -32,7 +32,7 @@
 
 <div
     {{ $attributes->withoutTwMergeClasses()->twMerge($base_class, $attributes->get('class')) }}
-    x-data="liquidModal"
+    x-data="liquidModal({ disableModal: {{ $disableModal ? 'true' : 'false' }}, disableModalMessage: '{{ $disableModalMessage }}' })"
     :class="{ 'modal-open': modalOpen }"
 >
     @if (!empty($trigger))
@@ -60,7 +60,7 @@
             {{ $modal->attributes }}
             {{ $attributes->twMergeFor('modal', $modal_base_class) }}
             x-show="modalOpen"
-            x-transition
+            x-transition.opacity
             @keyup.escape="if ( !modalLocked ) { modalOpen = false }"
             :class="{ 'hidden': !modalOpen, 'modal-open': modalOpen }"
         >
@@ -69,6 +69,9 @@
             <div
                 {{ $attributes->twMergeFor('modal-content', $modal_content_base_class) }}
                 @click.outside="if ( !modalLocked ) { modalOpen = false }"
+                x-cloak
+                x-show="modalOpen"
+                x-transition
             >
                 @if ($type === 'page')
                     <div {{ $attributes->twMergeFor('modal-container', 'container px-0') }}>
@@ -84,9 +87,9 @@
                         <button
                             {{ $attributes->twMergeFor('close-btn', $modal_close_btn_base_class) }}
                             type="button"
-                            @click.prevent="modalOpen = false"
+                            @click.prevent.stop="if ( !modalLocked ) { modalOpen = false }"
                         >
-                            <x-tabler-x class="size-5" />
+                            <x-tabler-x {{ $attributes->twMergeFor('close-btn-icon', 'size-5') }} />
                         </button>
                     </div>
                 @endif
@@ -124,6 +127,11 @@
                     if (this.modalLocked) return;
 
                     this._modalOpen = value;
+
+                    this.$dispatch('modal-toggle', {
+                        el: this.$el,
+                        open: value
+                    });
                 },
 
                 toggleModal() {
@@ -133,6 +141,10 @@
                     @else
                         this.modalOpen = !this.modalOpen
                     @endif
+                },
+
+                lockUnlockModal(lock) {
+                    this.modalLocked = lock;
                 }
             }))
         })

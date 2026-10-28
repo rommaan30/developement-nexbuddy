@@ -22,12 +22,16 @@ class KnowledgeBase
         Collection $knowledgeBase,
     ): string {
 
-        $generator = $this
-            ->generator($entityEnum)
-            ->setInput($query)
-            ->generate();
+        try {
+            $generator = $this
+                ->generator($entityEnum)
+                ->setInput($query)
+                ->generate();
 
-        $queryEmbedding = $generator->embeddings[0]->embedding;
+            $queryEmbedding = $generator->embeddings[0]->embedding;
+        } catch (\Throwable $e) {
+            return json_encode([], JSON_THROW_ON_ERROR);
+        }
 
         $results = [];
 

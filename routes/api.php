@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\HealthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('health', HealthController::class);
+
 Route::prefix('auth')
     ->group(function () {
         Route::post('register', 'App\Http\Controllers\Api\AuthController@register');
@@ -36,6 +39,12 @@ Route::prefix('auth')
 
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::middleware('auth:api')->prefix('v1/shared-credit')->group(function () {
+    Route::get('/balance', [App\Http\Controllers\Api\SharedCreditApiController::class, 'balance']);
+    Route::get('/history', [App\Http\Controllers\Api\SharedCreditApiController::class, 'history']);
+    Route::get('/cost/{entity}', [App\Http\Controllers\Api\SharedCreditApiController::class, 'cost']);
 });
 
 Route::middleware('auth:api')->group(function () {

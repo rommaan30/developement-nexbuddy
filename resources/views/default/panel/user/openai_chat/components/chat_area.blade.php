@@ -1,7 +1,8 @@
 @php
     $currentUrl = url()->current();
     $previousUrl = url()->previous();
-    $canvas_enabled = \App\Helpers\Classes\MarketplaceHelper::isRegistered('canvas') && (bool) setting('ai_chat_pro_canvas', 1);
+    $canvas_enabled = (\App\Helpers\Classes\MarketplaceHelper::isRegistered('canvas') && (bool) setting('ai_chat_pro_canvas', 1))
+        || (\App\Helpers\Classes\MarketplaceHelper::isRegistered('ai-chat-pro-deep-research') && (bool) setting('deep_research_auto_canvas', 1));
     $is_chat_pro =
         \App\Helpers\Classes\MarketplaceHelper::isRegistered('ai-chat-pro') &&
         (route('dashboard.user.openai.chat.pro.index') === $currentUrl ||
@@ -18,6 +19,12 @@
     }
     if ($is_chat_pro_image) {
         $eagerLoads[] = 'aiChatProImages';
+    }
+    if ($is_chat_pro && \App\Helpers\Classes\MarketplaceHelper::isRegistered('model-council')) {
+        $eagerLoads[] = 'councilResponses';
+    }
+    if (\App\Helpers\Classes\MarketplaceHelper::isRegistered('ai-chat-pro-entity-highlight')) {
+        $eagerLoads[] = 'chatEntityHighlights';
     }
 
     if (!empty($eagerLoads)) {
@@ -37,8 +44,9 @@
 @endphp
 
 @foreach ($messages ?? [] as $messageIndex => $message)
-    {{-- to prevent showing first 'Hi, ...' message on ai vision chat --}}
+    {{-- to prevent showing first 'Hi, ...' message on ai vision chat or in demo mode --}}
     @continue(isset($category) && ($category?->slug == 'ai_vision' || $category?->slug === 'ai_realtime_voice_chat') && count($chat?->messages) === 1)
+    @continue($app_is_demo && $is_chat_pro && $message->response === 'First Initiation')
 
     @php
         $is_multi_model_message = $is_chat_pro && isset($message->shared_uuid) && !empty($message->shared_uuid);
@@ -83,3 +91,4 @@
 		</div>
 	</div>
 @endif
+

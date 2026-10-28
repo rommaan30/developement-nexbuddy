@@ -13,6 +13,8 @@
 .htaccess
 /public/robots.txt
 
+
+
 /public/uploads
 
 /public/.htaccess
@@ -29,3 +31,4 @@ yarn-error.log*
 
 Thumbs.db
 *.zip
+

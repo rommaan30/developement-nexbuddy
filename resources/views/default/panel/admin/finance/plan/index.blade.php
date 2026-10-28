@@ -99,6 +99,14 @@
                             </td>
                             <td>
                                 {{ $entry->name }}
+                                @if($entry->isSharedCreditPlan())
+                                    <x-badge
+                                        class="text-2xs ms-1"
+                                        variant="info"
+                                    >
+                                        {{ __('Shared') }}
+                                    </x-badge>
+                                @endif
                             </td>
                             <td>
                                 {{ $entry->price }}

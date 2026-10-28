@@ -20,7 +20,9 @@ use App\Models\SettingTwo;
 use App\Models\Usage;
 use App\Models\User;
 use App\Models\UserOpenai;
+use App\Services\Ai\AiCompletionService;
 use App\Services\Ai\OpenAI\Image\CreateImageEditService;
+use App\Services\Ai\OpenAI\Image\CreateImageService;
 use App\Services\Bedrock\BedrockRuntimeService;
 use App\Services\Youtube\YoutubeTranscriptService;
 use Exception;
@@ -42,6 +44,7 @@ use JsonException;
 use OpenAI;
 use OpenAI\Laravel\Facades\OpenAI as FacadesOpenAI;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class AIController extends Controller
@@ -452,7 +455,7 @@ class AIController extends Controller
                 'url' => 'required|url',
             ]);
 
-            $data = (new youtubeTranscriptService)
+            $data = (new YoutubeTranscriptService)
                 ->getTranscript($videoUrl);
             $transcripts = json_decode($data->content(), true);
 
@@ -546,7 +549,7 @@ class AIController extends Controller
     /**
      * @throws Exception
      */
-    public function streamedTextOutput(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function streamedTextOutput(Request $request): StreamedResponse
     {
         $message_id = $request->input('message_id', null);
         $prompt = $request->input('prompt', null);
@@ -791,7 +794,7 @@ class AIController extends Controller
         $driver = Entity::driver();
         $driver->redirectIfNoCreditBalance();
 
-        $output = app(\App\Services\Ai\AiCompletionService::class)->completeUserOnly($prompt);
+        $output = app(AiCompletionService::class)->completeUserOnly($prompt);
 
         $entry = new UserOpenai([
             'team_id'     => $user->team_id,
@@ -838,7 +841,7 @@ class AIController extends Controller
         $history = $request->input('chatHistory');
         $client = OpenAI::factory()
             ->withApiKey($apiKey)
-            ->withHttpClient(new \GuzzleHttp\Client)
+            ->withHttpClient(new Client)
             ->make();
         $completion = $client->chat()->create([
             'model'    => $driver->enum()->value,
@@ -902,7 +905,7 @@ class AIController extends Controller
         $engineCheck = match ($param['image_generator']) {
             'flux-pro', 'flux-2-flex', 'flux-2-flex/edit', 'ideogram', 'ideogram-v2', 'flux-pro-kontext', 'flux-pro/kontext/text-to-image', 'nano-banana', 'nano-banana-pro', 'nano-banana-2', 'seedream/v4/text-to-image', 'flux/schnell', 'flux-pro/v1.1', 'flux-realism', 'imagen4', 'fal-ai', 'xai/grok-imagine-image', 'xai/grok-imagine-image/edit' => EngineEnum::FAL_AI->value,
             EntityEnum::MIDJOURNEY->value  => EngineEnum::PI_API->value,
-            EntityEnum::GPT_IMAGE_1->value, EntityEnum::GPT_IMAGE_1_5->value => EngineEnum::OPEN_AI->value,
+            EntityEnum::GPT_IMAGE_1->value, EntityEnum::GPT_IMAGE_1_5->value, EntityEnum::GPT_IMAGE_2->value => EngineEnum::OPEN_AI->value,
             'stable_diffusion'             => EngineEnum::STABLE_DIFFUSION->value,
             default                        => $param['image_generator'] ?? EngineEnum::OPEN_AI->value,
         };
@@ -957,6 +960,10 @@ class AIController extends Controller
 
             if ($param['image_generator'] === 'gpt-image-1.5' || $param['image_generator'] === 'gpt-image-1-5') {
                 $model = EntityEnum::GPT_IMAGE_1_5;
+            }
+
+            if ($param['image_generator'] === 'gpt-image-2') {
+                $model = EntityEnum::GPT_IMAGE_2;
             }
 
             $driver = Entity::driver($model)->inputImageCount($number_of_images)->calculateCredit();
@@ -1113,7 +1120,7 @@ class AIController extends Controller
     }
 
     /**
-     * @throws guzzleException
+     * @throws GuzzleException
      *                         this function only for check progress, no need to decrease the credit
      */
     public function checkVideoProgress(Request $request): JsonResponse
@@ -1252,7 +1259,7 @@ class AIController extends Controller
     }
 
     /**
-     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws GuzzleException
      * @throws Throwable
      * @throws JsonException
      */
@@ -1408,6 +1415,9 @@ class AIController extends Controller
             ->where('openai_id', $post->id)
             ->when($post_type === 'ai_image_generator' && Schema::hasColumn('user_openai', 'is_fashion_studio'), function ($query) {
                 $query->where('is_fashion_studio', false);
+            })
+            ->when($post_type === 'ai_image_generator' && Schema::hasColumn('user_openai', 'is_ai_photo_studio'), function ($query) {
+                $query->where('is_ai_photo_studio', false);
             });
 
         $all_images_count = $all_images->count();
@@ -1447,7 +1457,7 @@ class AIController extends Controller
             return response()->json(['result' => '']);
         }
 
-        $aiService = app(\App\Services\Ai\AiCompletionService::class);
+        $aiService = app(AiCompletionService::class);
 
         $languageCode = $aiService->complete(
             'You are a helpful language detection assistant. Must detect the content language and return it only ' . app()->getLocale() . ' language code. For example: "en_US"',
@@ -1496,7 +1506,7 @@ class AIController extends Controller
     {
         $vidURL = $request->video_url;
 
-        return (new youtubeTranscriptService)->getTranscript($vidURL);
+        return (new YoutubeTranscriptService)->getTranscript($vidURL);
     }
 
     private function getOpenAiApiKey(?User $user): string
@@ -1538,13 +1548,13 @@ class AIController extends Controller
             $engine === EngineEnum::FAL_AI && $model === EntityEnum::SEEDREAM_4 => $this->processFalAISeeDreamV4Image($model, $param),
             $engine === EngineEnum::FAL_AI && $model === EntityEnum::NANO_BANANA,
             $engine === EngineEnum::FAL_AI && $model === EntityEnum::NANO_BANANA_PRO,
-            $engine === EngineEnum::FAL_AI && $model === EntityEnum::NANO_BANANA_2                                          => $this->processFalAINanoBananaImage($model, $param),
-            $engine === EngineEnum::OPEN_AI && ($model === EntityEnum::GPT_IMAGE_1 || $model === EntityEnum::GPT_IMAGE_1_5) => $this->processOpenAIGptImage1($model, $param),
-            $engine === EngineEnum::OPEN_AI                                                                                 => $this->processOpenAIImage($model, $param),
-            $engine === EngineEnum::STABLE_DIFFUSION                                                                        => $this->processStableDiffusionImage($model, $param),
-            $engine === EngineEnum::FAL_AI                                                                                  => $this->processFalAIImage($model, $param),
-            $engine === EngineEnum::PI_API                                                                                  => $this->processPiAPIImage($model, $param),
-            default                                                                                                         => throw new Exception(__('Invalid AI Engine')),
+            $engine === EngineEnum::FAL_AI && $model === EntityEnum::NANO_BANANA_2                                                                                => $this->processFalAINanoBananaImage($model, $param),
+            $engine === EngineEnum::OPEN_AI && ($model === EntityEnum::GPT_IMAGE_1 || $model === EntityEnum::GPT_IMAGE_1_5 || $model === EntityEnum::GPT_IMAGE_2) => $this->processOpenAIGptImage1($model, $param),
+            $engine === EngineEnum::OPEN_AI                                                                                                                       => $this->processOpenAIImage($model, $param),
+            $engine === EngineEnum::STABLE_DIFFUSION                                                                                                              => $this->processStableDiffusionImage($model, $param),
+            $engine === EngineEnum::FAL_AI                                                                                                                        => $this->processFalAIImage($model, $param),
+            $engine === EngineEnum::PI_API                                                                                                                        => $this->processPiAPIImage($model, $param),
+            default                                                                                                                                               => throw new Exception(__('Invalid AI Engine')),
         };
     }
 
@@ -1573,12 +1583,54 @@ class AIController extends Controller
             'quality'     => 'standard',
         ];
 
-        $imageDetails = $this->processOpenAIImage($model, $param);
+        $imageDetails = $this->isGptImageModel($model)
+            ? $this->processGptImageForChat($model, $param)
+            : $this->processOpenAIImage($model, $param);
         Usage::getSingle()->updateImageCounts($driver->calculate());
         $driver->decreaseCredit();
         $savePath = $this->saveImageOutputToStorage($imageDetails);
 
         return '![Image](/' . $savePath . ')';
+    }
+
+    /**
+     * Check if the model is a GPT Image model (gpt-image-1, gpt-image-1.5, or gpt-image-2).
+     */
+    private function isGptImageModel(?EntityEnum $model): bool
+    {
+        return $model === EntityEnum::GPT_IMAGE_1 || $model === EntityEnum::GPT_IMAGE_1_5 || $model === EntityEnum::GPT_IMAGE_2;
+    }
+
+    /**
+     * Process GPT Image model generation for chat context.
+     *
+     * Uses CreateImageService directly instead of processOpenAIGptImage1,
+     * which reads from request() and is designed for the image generation page.
+     */
+    private function processGptImageForChat(?EntityEnum $model, array $param): array
+    {
+        $prompt = $param['description'];
+
+        if (is_null($prompt)) {
+            throw new RuntimeException(__('You must provide a prompt'));
+        }
+
+        $imageContent = app(CreateImageService::class)
+            ->setModel($model?->value)
+            ->setPrompt($prompt)
+            ->generateForAi();
+
+        if ($imageContent !== null) {
+            $nameOfImage = Str::random(12) . '-GPT-IMG-' . Str::slug(explode(' ', mb_substr($prompt, 0, 15))[0]) . '.png';
+
+            return [
+                'prompt'       => $prompt,
+                'imageContent' => base64_decode($imageContent),
+                'nameOfImage'  => $nameOfImage,
+            ];
+        }
+
+        throw new RuntimeException(__('Image generation failed'));
     }
 
     /**
@@ -1609,7 +1661,7 @@ class AIController extends Controller
                 ->setPrompt($prompt)
                 ->generateForAi();
         } else {
-            $imageContent = app(\App\Services\Ai\OpenAI\Image\CreateImageService::class)
+            $imageContent = app(CreateImageService::class)
                 ->setModel($model?->value)
                 ->setPrompt($prompt)
                 ->generateForAi();

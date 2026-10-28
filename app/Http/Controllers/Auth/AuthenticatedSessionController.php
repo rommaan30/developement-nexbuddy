@@ -14,6 +14,7 @@ use Exception;
 use Google2FA;
 use GuzzleHttp\Client;
 use Igaster\LaravelTheme\Facades\Theme;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -40,7 +41,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): \Illuminate\Http\JsonResponse
+    public function store(LoginRequest $request): JsonResponse
     {
         $settings = Setting::getCache();
         $email = $request->email;
@@ -104,7 +105,7 @@ class AuthenticatedSessionController extends Controller
                 return response()->json(['link' => '2fa/login']);
             }
 
-            event(new UsersActivityEvent($user->email, $user->type, $request->ip(), $request->header('User-Agent')));
+            event(new UsersActivityEvent($user->email, $user->type, $request->header('User-Agent')));
         }
 
         if ((setting('frontend_additional_url_type') !== 'ai-image-pro') && (setting('dash_theme') === 'social-media-agent-dashboard')) {

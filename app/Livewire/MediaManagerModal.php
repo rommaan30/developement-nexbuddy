@@ -6,10 +6,12 @@ use App\Extensions\AiVideoPro\System\Models\UserFall;
 use App\Helpers\Classes\MarketplaceHelper;
 use App\Models\ExportedVideo;
 use App\Models\UserOpenai;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -857,9 +859,9 @@ class MediaManagerModal extends Component
 
                 try {
                     $lastModified = $disk->lastModified($file);
-                    $createdAt = \Carbon\Carbon::createFromTimestamp($lastModified);
+                    $createdAt = Carbon::createFromTimestamp($lastModified);
                 } catch (Exception $e) {
-                    $createdAt = \Carbon\Carbon::now();
+                    $createdAt = Carbon::now();
                 }
 
                 $fileUrl = url('/uploads/' . $file);
@@ -1090,10 +1092,10 @@ class MediaManagerModal extends Component
 
                 try {
                     $lastModified = $disk->lastModified($file);
-                    $createdAt = \Carbon\Carbon::createFromTimestamp($lastModified);
+                    $createdAt = Carbon::createFromTimestamp($lastModified);
                 } catch (Exception $e) {
                     // Fallback to current time if we can't get the file timestamp
-                    $createdAt = \Carbon\Carbon::now();
+                    $createdAt = Carbon::now();
                 }
 
                 $fileUrl = url('/uploads/' . $file);
@@ -1128,6 +1130,12 @@ class MediaManagerModal extends Component
             ->where('output', '!=', '')
             ->whereHas('generator', function ($q) {
                 $q->where('type', 'image');
+            })
+            ->when(Schema::hasColumn('user_openai', 'is_fashion_studio'), function ($q) {
+                $q->where('is_fashion_studio', false);
+            })
+            ->when(Schema::hasColumn('user_openai', 'is_ai_photo_studio'), function ($q) {
+                $q->where('is_ai_photo_studio', false);
             })
             ->with(['generator' => function ($q) {
                 $q->select('id', 'type', 'title');
@@ -1242,6 +1250,12 @@ class MediaManagerModal extends Component
                 ->where('output', '!=', '')
                 ->whereHas('generator', function ($q) {
                     $q->where('type', 'video');
+                })
+                ->when(Schema::hasColumn('user_openai', 'is_fashion_studio'), function ($q) {
+                    $q->where('is_fashion_studio', false);
+                })
+                ->when(Schema::hasColumn('user_openai', 'is_ai_photo_studio'), function ($q) {
+                    $q->where('is_ai_photo_studio', false);
                 })
                 ->with(['generator' => function ($q) {
                     $q->select('id', 'type', 'title');

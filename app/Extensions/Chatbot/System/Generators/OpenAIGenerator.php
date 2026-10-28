@@ -248,15 +248,6 @@ class OpenAIGenerator extends Generator
             ];
         }
 
-        $leadInstruction = $this->leadQualificationInstruction();
-
-        if ($leadInstruction) {
-            $histories[] = [
-                'role'    => 'system',
-                'content' => $leadInstruction,
-            ];
-        }
-
         return $histories;
     }
 

@@ -18,6 +18,7 @@ use App\Models\SettingTwo;
 use App\Models\Usage;
 use App\Models\User;
 use App\Models\UserOpenai;
+use App\Services\Ai\AiCompletionService;
 use App\Services\Bedrock\BedrockRuntimeService;
 use App\Services\Youtube\YoutubeTranscriptService;
 use Exception;
@@ -521,7 +522,7 @@ class AIController extends Controller
 
             $videoUrl = $request->url;
 
-            $data = (new youtubeTranscriptService)
+            $data = (new YoutubeTranscriptService)
                 ->getTranscript($videoUrl);
             $transcripts = json_decode($data->content(), true);
 
@@ -664,7 +665,7 @@ class AIController extends Controller
         $driver = Entity::driver();
         $driver->redirectIfNoCreditBalance();
 
-        $output = app(\App\Services\Ai\AiCompletionService::class)->completeUserOnly($prompt);
+        $output = app(AiCompletionService::class)->completeUserOnly($prompt);
 
         $entry = new UserOpenai([
             'team_id'     => $user->team_id,
@@ -753,9 +754,11 @@ class AIController extends Controller
             EntityEnum::GROK_IMAGINE_IMAGE_EDIT->value => EngineEnum::FAL_AI->value,
             EntityEnum::GPT_IMAGE_1->value,
             EntityEnum::GPT_IMAGE_1_5->value,
+            EntityEnum::GPT_IMAGE_2->value,
             'gpt-image-1',
             'gpt-image-1.5',
             'gpt-image-1-5',
+            'gpt-image-2',
             'dall-e' => EngineEnum::OPEN_AI->value,
             default  => $imageGenerator ?? EngineEnum::OPEN_AI->value,
         };
@@ -778,7 +781,8 @@ class AIController extends Controller
             'ideogram'                                 => EntityEnum::IDEOGRAM,
             'gpt-image-1'                              => EntityEnum::GPT_IMAGE_1,
             'gpt-image-1.5', 'gpt-image-1-5' => EntityEnum::GPT_IMAGE_1_5,
-            default => $this->getDefaultModel($engine),
+            'gpt-image-2'                    => EntityEnum::GPT_IMAGE_2,
+            default                          => $this->getDefaultModel($engine),
         };
     }
 
@@ -1409,7 +1413,7 @@ class AIController extends Controller
     }
 
     /**
-     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws GuzzleException
      * @throws Throwable
      * @throws JsonException
      */
