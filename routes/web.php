@@ -16,15 +16,10 @@ use App\Http\Controllers\MailController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Payment\PlanAndPricingController;
 use App\Http\Controllers\PrivatePlanController;
-use App\Http\Controllers\TestController;
 use Illuminate\Support\Facades\Route;
 use RachidLaasri\LaravelInstaller\Middleware\ApplicationStatus;
 
 Route::get('language/{lang}/change', LocaleController::class)->name('language.change');
-
-Route::any('test', [TestController::class, 'test'])->name('test');
-Route::post('test', [TestController::class, 'test'])->name('test.post');
-Route::get('test/stream/{model}', [TestController::class, 'stream'])->name('test.stream');
 
 Route::view('test/chatbot', 'default.chatbot');
 
