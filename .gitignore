@@ -11,7 +11,7 @@
 /public/hot
 
 .htaccess
-public/robots.txt
+/public/robots.txt
 
 /public/uploads
 
