@@ -103,6 +103,7 @@ class MenuService
                     $query->where('is_active', true);
                 })
                 ->orderBy('order', 'asc')
+                ->orderBy('id', 'asc')
                 ->get();
 
             return $this->merge($items);
@@ -363,6 +364,42 @@ class MenuService
                     'dashboard.chatbot.*',
                 ],
                 'show_condition' => Route::has('dashboard.chatbot.chatbot-customer.index'),
+            ],
+            'ext_chatbot_enquiries' => [
+                'parent_key'       => null,
+                'key'              => 'ext_chatbot_enquiries',
+                'route'            => 'dashboard.chatbot.enquiries.index',
+                'label'            => 'AI Bot Enquiries',
+                'icon'             => 'tabler-clipboard-list',
+                'svg'              => null,
+                'order'            => 5,
+                'is_active'        => true,
+                'params'           => [],
+                'type'             => 'item',
+                'extension'        => true,
+                'active_condition' => [
+                    'dashboard.chatbot.enquiries.*',
+                ],
+                'show_condition' => Route::has('dashboard.chatbot.enquiries.index'),
+            ],
+            'ext_chatbot_notification_recipients_panel' => [
+                'parent_key'       => null,
+                'key'              => 'ext_chatbot_notification_recipients_panel',
+                'route'            => 'dashboard.chatbot.notification-management.recipient.index',
+                'label'            => 'Notification Management',
+                'icon'             => 'tabler-bell-cog',
+                'svg'              => null,
+                'order'            => 6,
+                'is_active'        => true,
+                'params'           => [],
+                'type'             => 'item',
+                'extension'        => true,
+                'active_condition' => [
+                    'dashboard.chatbot.notification-management.recipient.*',
+                ],
+                // Clients use the chatbot panel URL; Super Admin is redirected
+                // to the admin surface by EnsureNotificationManagementSurface.
+                'show_condition' => Route::has('dashboard.chatbot.notification-management.recipient.index'),
             ],
             'ext_voice_chatbot' => [
                 'parent_key'       => null,
@@ -2669,6 +2706,24 @@ class MenuService
                     'dashboard.admin.announcements.*',
                 ],
                 'show_condition' => true,
+                'is_admin'       => true,
+            ],
+            'ext_chatbot_notification_recipients' => [
+                'parent_key'       => null,
+                'key'              => 'ext_chatbot_notification_recipients',
+                'route'            => 'dashboard.admin.notification-management.recipient.index',
+                'label'            => 'Notification Management',
+                'icon'             => 'tabler-bell-cog',
+                'svg'              => null,
+                'order'            => 36,
+                'is_active'        => true,
+                'params'           => [],
+                'type'             => 'item',
+                'extension'        => true,
+                'active_condition' => [
+                    'dashboard.admin.notification-management.recipient.*',
+                ],
+                'show_condition' => Route::has('dashboard.admin.notification-management.recipient.index'),
                 'is_admin'       => true,
             ],
             'discount-manager' => [

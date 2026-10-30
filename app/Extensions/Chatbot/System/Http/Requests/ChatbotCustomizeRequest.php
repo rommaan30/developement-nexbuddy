@@ -5,6 +5,8 @@ namespace App\Extensions\Chatbot\System\Http\Requests;
 use App\Extensions\Chatbot\System\Enums\ColorModeEnum;
 use App\Extensions\Chatbot\System\Enums\HeaderBgEnum;
 use App\Extensions\Chatbot\System\Enums\PositionEnum;
+use App\Extensions\Chatbot\System\Services\Enquiry\ChatbotInterestDictionary;
+use App\Extensions\Chatbot\System\Services\Enquiry\ChatbotMandatoryFields;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
@@ -23,6 +25,13 @@ class ChatbotCustomizeRequest extends FormRequest
             'welcome_message'                    => ['required', 'string'],
             'connect_message'                    => ['sometimes', 'nullable', 'string'],
             'instructions'                       => ['required', 'string'],
+            'enquiry_interests'                  => ['sometimes', 'nullable', 'array'],
+            'enquiry_interests.*.label'          => ['required_with:enquiry_interests', 'string', 'max:255'],
+            'enquiry_interests.*.keywords'       => ['nullable'],
+            'enquiry_mandatory_fields'           => ['sometimes', 'nullable', 'array'],
+            'enquiry_mandatory_fields.*.field'   => ['required_with:enquiry_mandatory_fields', 'string', 'max:64'],
+            'enquiry_mandatory_fields.*.label'   => ['nullable', 'string', 'max:255'],
+            'enquiry_mandatory_fields.*.ask_hint'=> ['nullable', 'string', 'max:500'],
             'do_not_go_beyond_instructions'      => ['sometimes', 'nullable'],
             'suggested_prompts'                  => ['sometimes', 'nullable', 'array'],
             'suggested_prompts.*.name'           => ['sometimes', 'nullable', 'string'],
@@ -120,12 +129,23 @@ class ChatbotCustomizeRequest extends FormRequest
             )
         );
 
-        $this->merge([
+        $merge = [
             'active'                    => (bool) $this->active,
             'trigger_avatar_size'       => $this->get('trigger_avatar_size') ?? '60px',
             'suggested_prompts'         => $suggestedPrompts,
             'suggested_prompts_enabled' => (bool) $this->boolean('suggested_prompts_enabled'),
             'trusted_domains'           => $trusted_domains,
-        ]);
+        ];
+
+        if ($this->exists('enquiry_interests')) {
+            $merge['enquiry_interests'] = ChatbotInterestDictionary::normalize($this->input('enquiry_interests'));
+        }
+
+        if ($this->exists('enquiry_mandatory_fields')) {
+            $normalized = ChatbotMandatoryFields::normalize($this->input('enquiry_mandatory_fields'));
+            $merge['enquiry_mandatory_fields'] = $normalized === [] ? null : $normalized;
+        }
+
+        $this->merge($merge);
     }
 }

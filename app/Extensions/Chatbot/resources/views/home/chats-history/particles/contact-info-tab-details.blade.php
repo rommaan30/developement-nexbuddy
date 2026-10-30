@@ -292,4 +292,84 @@
             ></span>
         </p>
     </div>
+
+    <x-card
+        class="mt-5 text-start xl:mx-4"
+        class:body="p-4"
+    >
+        <h4 class="mb-4 text-base font-semibold text-heading-foreground">
+            {{ __('Extracted Enquiry') }}
+        </h4>
+
+        <div
+            class="rounded-lg border px-4"
+            x-show="activeChat?.enquiry"
+        >
+            <p class="mb-0 flex items-center justify-between gap-1 border-b py-4 text-foreground/60">
+                {{ __('Visitor Name') }}
+                <span
+                    class="max-w-[65%] overflow-hidden text-ellipsis whitespace-nowrap text-end text-foreground"
+                    x-text="activeChat?.enquiry?.visitor_name || activeChat?.conversation_name || '---'"
+                ></span>
+            </p>
+            <p class="mb-0 flex items-center justify-between gap-1 border-b py-4 text-foreground/60">
+                {{ __('Email') }}
+                <span
+                    class="max-w-[65%] overflow-hidden text-ellipsis whitespace-nowrap text-end text-foreground"
+                    x-text="activeChat?.enquiry?.email || '---'"
+                ></span>
+            </p>
+            <p class="mb-0 flex items-center justify-between gap-1 border-b py-4 text-foreground/60">
+                {{ __('Phone') }}
+                <span
+                    class="max-w-[65%] overflow-hidden text-ellipsis whitespace-nowrap text-end text-foreground"
+                    x-text="activeChat?.enquiry?.phone || '---'"
+                ></span>
+            </p>
+            <p class="mb-0 flex items-center justify-between gap-1 border-b py-4 text-foreground/60">
+                {{ __('Company') }}
+                <span
+                    class="max-w-[65%] overflow-hidden text-ellipsis whitespace-nowrap text-end text-foreground"
+                    x-text="activeChat?.enquiry?.company || '---'"
+                ></span>
+            </p>
+            <p class="mb-0 flex items-center justify-between gap-1 border-b py-4 text-foreground/60">
+                {{ __('Interest') }}
+                <span
+                    class="max-w-[65%] overflow-hidden text-ellipsis whitespace-nowrap text-end text-foreground"
+                    x-text="activeChat?.enquiry?.interest || '---'"
+                ></span>
+            </p>
+            <p class="mb-0 flex items-center justify-between gap-1 border-b py-4 text-foreground/60">
+                {{ __('Lead Score') }}
+                <span
+                    class="lqd-badge inline-flex rounded-full px-2 py-0.5 text-2xs font-medium transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                    :class="getEnquiryLeadScoreBadgeClass(activeChat?.enquiry?.lead_score)"
+                    x-text="getEnquiryLeadScore(activeChat?.enquiry?.lead_score)"
+                ></span>
+            </p>
+            <p class="mb-0 flex items-center justify-between gap-1 border-b py-4 text-foreground/60">
+                {{ __('Status') }}
+                <span
+                    class="lqd-badge inline-flex rounded-full px-2 py-0.5 text-2xs font-medium capitalize transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                    :class="getEnquiryStatusBadgeClass(activeChat?.enquiry?.status)"
+                    x-text="getEnquiryStatusLabel(activeChat?.enquiry?.status)"
+                ></span>
+            </p>
+            <p class="mb-0 flex items-center justify-between gap-1 py-4 text-foreground/60">
+                {{ __('Created At') }}
+                <span
+                    class="max-w-[65%] overflow-hidden text-ellipsis whitespace-nowrap text-end text-foreground"
+                    x-text="formatEnquiryDate(activeChat?.enquiry?.created_at)"
+                ></span>
+            </p>
+        </div>
+
+        <x-empty-state
+            class="py-4"
+            icon="tabler-inbox"
+            title="{{ __('No enquiry detected for this conversation.') }}"
+            x-show="activeChat && !activeChat?.enquiry"
+        />
+    </x-card>
 </div>

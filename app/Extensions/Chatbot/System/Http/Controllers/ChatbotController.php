@@ -7,6 +7,7 @@ use App\Extensions\Chatbot\System\Http\Requests\ChatbotStoreRequest;
 use App\Extensions\Chatbot\System\Http\Resources\Admin\ChatbotConversationResource;
 use App\Extensions\Chatbot\System\Http\Resources\Admin\ChatbotResource;
 use App\Extensions\Chatbot\System\Models\Chatbot;
+use App\Extensions\Chatbot\System\Models\ChatbotEnquiry;
 use App\Extensions\Chatbot\System\Services\ChatbotService;
 use App\Helpers\Classes\Helper;
 use App\Http\Controllers\Controller;
@@ -31,6 +32,17 @@ class ChatbotController extends Controller
         $unreadAgentMessagesCount = $this->service->unreadAgentMessagesCount($externalChatbots);
         $unreadAiBotMessagesCount = $this->service->unreadAiBotMessagesCount($externalChatbots);
         $allMessagesCount = $this->service->allMessagesCount($externalChatbots);
+        $enquiryQuery = ChatbotEnquiry::query()->whereIn('chatbot_id', $externalChatbots);
+        $totalEnquiriesCount = (clone $enquiryQuery)->count();
+        $enquiryStatusCounts = (clone $enquiryQuery)
+            ->selectRaw("LOWER(COALESCE(status, 'new')) as status, COUNT(*) as aggregate")
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+        $latestEnquiries = (clone $enquiryQuery)
+            ->with('customer:id,name,email,phone')
+            ->latest()
+            ->limit(10)
+            ->get();
 
         return view('chatbot::index', [
             'chatbots' => $this->service->query()
@@ -42,6 +54,15 @@ class ChatbotController extends Controller
             'unreadAgentMessagesCount' => $unreadAgentMessagesCount,
             'unreadAiBotMessagesCount' => $unreadAiBotMessagesCount,
             'allMessagesCount'         => $allMessagesCount,
+            'totalEnquiriesCount'      => $totalEnquiriesCount,
+            'enquiryAnalytics'         => [
+                'total'     => $totalEnquiriesCount,
+                'new'       => (int) ($enquiryStatusCounts['new'] ?? 0),
+                'contacted' => (int) ($enquiryStatusCounts['contacted'] ?? 0),
+                'qualified' => (int) ($enquiryStatusCounts['qualified'] ?? 0),
+                'closed'    => (int) ($enquiryStatusCounts['closed'] ?? 0),
+            ],
+            'latestEnquiries'          => $latestEnquiries,
         ]);
     }
 

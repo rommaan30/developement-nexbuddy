@@ -37,6 +37,7 @@ enum Permissions: string implements Contracts\WithStringBackedEnum
     case UPDATE = 'update';
     case MENU_SETTINGS = 'menu_setting';
     case VIP_CHAT_WIDGET = 'VIP_CHAT_WIDGET';
+    case NOTIFICATION_MANAGEMENT = 'ext_chatbot_notification_recipients';
 
     public function label(): string
     {
@@ -66,6 +67,7 @@ enum Permissions: string implements Contracts\WithStringBackedEnum
             self::UPDATE                  => __('Update'),
             self::MENU_SETTINGS           => __('Menu Settings'),
             self::VIP_CHAT_WIDGET         => __('VIP Chat Widget'),
+            self::NOTIFICATION_MANAGEMENT => __('Notification Management'),
         };
     }
 }

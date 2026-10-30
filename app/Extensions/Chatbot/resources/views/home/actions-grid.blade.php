@@ -59,7 +59,7 @@
     </div>
 </x-card>
 
-<div class="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-11">
+<div class="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-11">
     {{-- Add new chatbot card --}}
     <x-card
         class:body="lg:p-16 p-9"
@@ -124,5 +124,38 @@
 				</x-button>
 			@endif
         </div>
+    </x-card>
+
+    {{-- Show enquiries card --}}
+    <x-card
+        class:body="lg:p-16 p-9"
+        class="text-center"
+    >
+        <figure class="mx-auto mb-6 inline-grid size-40 place-items-center rounded-full bg-heading-foreground/[3%]">
+            <x-tabler-clipboard-list
+                class="size-16 text-heading-foreground"
+                stroke-width="1.5"
+            />
+        </figure>
+        <p class="mx-auto mb-3 max-w-[370px] font-heading text-xl font-semibold leading-[1.3em] text-heading-foreground">
+            @lang('AI Bot Enquiries')
+        </p>
+        <p class="mb-6 text-heading-foreground/60">
+            @lang('Total Enquiries')
+            <span class="ms-2 font-heading text-[23px]/none font-semibold text-heading-foreground">
+                {{ $totalEnquiriesCount }}
+            </span>
+        </p>
+
+        <x-button
+            variant="ghost-shadow"
+            href="{{ route('dashboard.chatbot.enquiries.index') }}"
+        >
+            <x-tabler-clipboard-list
+                class="size-5"
+                stroke-width="1.5"
+            />
+            @lang('AI Bot Enquiries')
+        </x-button>
     </x-card>
 </div>

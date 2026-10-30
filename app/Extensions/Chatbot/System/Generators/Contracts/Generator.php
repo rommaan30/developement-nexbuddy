@@ -6,6 +6,7 @@ use App\Domains\Entity\Enums\EntityEnum;
 use App\Extensions\Chatbot\System\Models\Chatbot;
 use App\Extensions\Chatbot\System\Models\ChatbotConversation;
 use App\Extensions\Chatbot\System\Models\ChatbotHistory;
+use App\Extensions\Chatbot\System\Services\Enquiry\MissingFieldsManager;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -75,6 +76,26 @@ abstract class Generator implements GeneratorInterface
         $this->conversation = $conversation;
 
         return $this;
+    }
+
+    /**
+     * Optional lead-qualification system instruction for the current conversation.
+     * Returns null when all mandatory fields are collected or skipped.
+     */
+    protected function leadQualificationInstruction(): ?string
+    {
+        if (! isset($this->conversation)) {
+            return null;
+        }
+
+        try {
+            return app(MissingFieldsManager::class)->instructionFor(
+                $this->conversation,
+                $this->prompt ?? null
+            );
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public function isImageMediaUrl(?string $mediaUrl): bool
